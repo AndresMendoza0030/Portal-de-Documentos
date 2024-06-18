@@ -158,9 +158,9 @@
                 <tr>
                     <td>{{ user['username'] }}</td>
                     <td>{{ user['role'] }}</td>
-                    <td>{{ user['folders'] }}</td>
+                    <td>{{ user['folders'] | join(', ') }}</td>
                     <td>
-                        <button class="edit-button" onclick="openModal('{{ user['username'] }}', '{{ user['role'] }}', '{{ user['folders'] }}')">Editar</button>
+                        <button class="edit-button" onclick="openModal('{{ user['username'] }}', '{{ user['role'] }}', '{{ user['folders'] | join(', ') }}')">Editar</button>
                     </td>
                 {% endfor %}
             </tbody>
@@ -197,7 +197,11 @@
             </div>
             <div class="form-group" >
                 <label for="folders" class="form-label">Permisos de Carpetas:</label>
-                <input type="text" id="folders" name="folders" class="form-control">
+                <select id="folders" name="folders" class="form-control" multiple>
+                    {% for folder in folders %}
+                        <option value="{{ folder }}">{{ folder }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <button type="submit" class="submit-button">Actualizar</button>
         </form>
@@ -208,7 +212,11 @@
     function openModal(username, role, folders) {
         document.getElementById('modal-username').value = username;
         document.getElementById('role').value = role;
-        document.getElementById('folders').value = folders;
+        let folderArray = folders.split(', ');
+        let folderOptions = document.getElementById('folders').options;
+        for (let i = 0; i < folderOptions.length; i++) {
+            folderOptions[i].selected = folderArray.includes(folderOptions[i].value);
+        }
         document.getElementById('myModal').style.display = "block";
     }
 

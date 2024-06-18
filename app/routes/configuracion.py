@@ -1,20 +1,28 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
 import sqlite3
 from flask_paginate import Pagination, get_page_parameter
-
+import os
 bp = Blueprint('configuracion', __name__)
 
 def get_users(offset=0, per_page=10):
     conn = sqlite3.connect('users.db')
-    users = conn.execute('SELECT username, role, folders FROM users LIMIT ? OFFSET ?', (per_page, offset)).fetchall()
+    users = conn.execute('SELECT username, role FROM users LIMIT ? OFFSET ?', (per_page, offset)).fetchall()
+    users_with_folders = []
+    for user in users:
+        username, role = user
+        folders = get_user_folders(role)
+        users_with_folders.append(dict(username=username, role=role, folders=folders))
     conn.close()
-    return [dict(username=row[0], role=row[1], folders=row[2]) for row in users]
+    return users_with_folders
 
 def get_folders():
-    conn = sqlite3.connect('users.db')
-    folders = conn.execute('SELECT DISTINCT folders FROM roles').fetchall()
-    conn.close()
-    return [folder[0] for folder in folders]
+    root_folder = 'uploads'
+    subfolders = [root_folder]
+    for item in os.listdir(root_folder):
+        item_path = os.path.join(root_folder, item)
+        if os.path.isdir(item_path):
+            subfolders.append(item)
+    return subfolders
 
 def get_roles():
     conn = sqlite3.connect('users.db')
@@ -34,17 +42,24 @@ def update_user_role(username, role):
     conn.commit()
     conn.close()
 
-def update_user_folders(username, folders):
+def update_user_folders(role, folders):
     conn = sqlite3.connect('users.db')
-    conn.execute('UPDATE users SET folders = ? WHERE username = ?', (folders, username))
+    conn.execute('UPDATE roles SET folders = ? WHERE role = ?', (folders, role))
     conn.commit()
     conn.close()
+
+def get_user_folders(role):
+    conn = sqlite3.connect('users.db')
+    folders = conn.execute('SELECT folders FROM roles WHERE role = ?', (role,)).fetchone()
+    conn.close()
+    return folders[0].split(',') if folders else []
 
 def get_backup_frequency():
     conn = sqlite3.connect('respaldo.db')
     frequency = conn.execute('SELECT valor FROM frequency WHERE clave = ?', ('frecuencia_respaldo',)).fetchone()
     conn.close()
     return frequency[0] if frequency else '7'
+
 def update_backup_frequency(new_frequency):
     conn = sqlite3.connect('respaldo.db')
     conn.execute('UPDATE frequency SET valor = ? WHERE clave = ?', (new_frequency, 'frecuencia_respaldo'))
@@ -62,7 +77,7 @@ def configuracion():
             role = request.form['role']
             folders = request.form.getlist('folders')
             update_user_role(username, role)
-            update_user_folders(username, ','.join(folders))
+            update_user_folders(role, ','.join(folders))
             flash(f'Rol de {username} actualizado a {role} con permisos a {", ".join(folders)}.')
         elif 'frecuencia' in request.form:
             frecuencia = request.form['frecuencia']
