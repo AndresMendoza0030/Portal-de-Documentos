@@ -43,6 +43,22 @@
         font-size: 1rem;
         line-height: 1.5;
         color: #02203C;
+        animation: slideInLeft 1s;
+    }
+
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .highlight {
+        color: #D00910;
     }
 
     .fade-in {
@@ -68,14 +84,13 @@
 </div>
 
 <div class="description">
-    <h2>Centro Virtual de Documentación</h2>
+    <h2 class="highlight">Centro Virtual de Documentación</h2>
     <p>Nuestro portal de documentación proporciona una solución integral para la gestión y acceso a documentos importantes dentro de la organización.</p>
     <p>Con nuestra plataforma, los usuarios pueden:</p>
     <ul>
         <li>Subir y almacenar documentos de manera segura.</li>
         <li>Acceder a documentos desde cualquier lugar y en cualquier momento.</li>
         <li>Colaborar en la edición y actualización de archivos en tiempo real.</li>
-     
         <li>Realizar auditorías de cambios para mantener un historial de modificaciones.</li>
         <li>Recuperar versiones anteriores de documentos gracias a nuestro sistema de respaldo.</li>
     </ul>
