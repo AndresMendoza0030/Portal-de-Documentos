@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .file-explorer-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        flex: 1; /* Asegura que ocupe el espacio disponible */
+    }
+
+    .file-explorer-header {
+        width: 100%;
+        max-width: 1000px;
+        margin-bottom: 20px;
+        padding: 20px 10px; /* Incrementar el padding vertical para más altura */
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .file-list {
+        width: 100%;
+        max-width: 1000px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        flex: 1; /* Asegura que ocupe el espacio disponible */
+        overflow-y: auto; /* Permite el scroll si hay muchos archivos */
+    }
+
+    .file-item {
+        width: 200px;
+        padding: 15px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .file-item img {
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+        margin-bottom: 10px;
+    }
+
+    .file-item a {
+        text-decoration: none;
+        color: #D10A11;
+        font-weight: bold;
+    }
+
+    .file-item a:hover {
+        text-decoration: underline;
+    }
+
+    .upload-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .upload-button:hover {
+        background-color: #a00;
+    }
+</style>
+
+<div class="file-explorer-container">
+    <div class="file-explorer-header">
+        <h1>Explorador de Archivos</h1>
+        <p>Selecciona un archivo para visualizar o descargar.</p>
+        <a href="{{ url_for('document.upload_file') }}" class="upload-button">Subir Nuevo Archivo</a>
+    </div>
+
+    <div class="file-list">
+        {% for file in files %}
+        <div class="file-item">
+            {% if file.endswith('.pptx') %}
+            <img src="{{ url_for('static', filename='images/icons/pptx.png') }}" alt="PPTX">
+            {% elif file.endswith('.docx') %}
+            <img src="{{ url_for('static', filename='images/icons/docx.png') }}" alt="DOCX">
+            {% elif file.endswith('.pdf') %}
+            <img src="{{ url_for('static', filename='images/icons/pdf.png') }}" alt="PDF">
+            {% elif file.endswith('.xlsx') %}
+            <img src="{{ url_for('static', filename='images/icons/xlsx.png') }}" alt="XLSX">
+            {% endif %}
+            <a href="{{ url_for('uploaded_file', filename=file) }}">{{ file }}</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

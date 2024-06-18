@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Raleway', sans-serif;
+        background-color: #f4f4f4;
+    }
+
+    .config-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .config-header {
+        width: 100%;
+        max-width: 800px;
+        padding: 20px 10px;
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .config-form {
+        width: 100%;
+        max-width: 800px;
+        margin-top: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        font-family: 'Raleway', sans-serif;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .submit-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .submit-button:hover {
+        background-color: #a00;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #000000;
+    }
+
+    table, th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    th {
+        background-color: #1B878F;
+        color: white;
+    }
+
+    .edit-button {
+        background-color: #1B878F;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        padding: 5px 10px;
+    }
+
+    .edit-button:hover {
+        background-color: #125f67;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgb(0,0,0);
+        background-color: rgba(0,0,0,0.4);
+        padding-top: 60px;
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<div class="config-container">
+    <div class="config-header">
+        <h1>Configuración</h1>
+    </div>
+    <div class="config-form">
+        <h2>Gestión de Usuarios</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Permisos de Carpetas</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user['username'] }}</td>
+                    <td>{{ user['role'] }}</td>
+                    <td>{{ user['folders'] }}</td>
+                    <td>
+                        <button class="edit-button" onclick="openModal('{{ user['username'] }}', '{{ user['role'] }}', '{{ user['folders'] }}')">Editar</button>
+                    </td>
+                {% endfor %}
+            </tbody>
+        </table>
+        {{ pagination.links }}
+    </div>
+    <div class="config-form">
+        <h2>Configuración de Respaldo Automático</h2>
+        <form method="POST" action="{{ url_for('configuracion.configuracion') }}" >
+            <div class="form-group" >
+                <label for="frecuencia" class="form-label">Frecuencia de Respaldo (días):</label>
+                <input type="number" id="frecuencia" name="frecuencia" class="form-control" value="{{ frecuencia }}" min="1">
+            </div>
+            <div style="text-align: center;">  <button type="submit" class="submit-button" >Actualizar</button></div>
+          
+        </form>
+    </div>
+</div>
+
+<!-- The Modal -->
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Actualizar Rol y Permisos de Usuario</h2>
+        <form method="POST" action="{{ url_for('configuracion.configuracion') }}">
+            <input type="hidden" name="username" id="modal-username">
+            <div class="form-group">
+                <label for="role" class="form-label">Rol:</label>
+                <select id="role" name="role" class="form-control">
+                    {% for role in roles %}
+                        <option value="{{ role }}">{{ role }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" >
+                <label for="folders" class="form-label">Permisos de Carpetas:</label>
+                <input type="text" id="folders" name="folders" class="form-control">
+            </div>
+            <button type="submit" class="submit-button">Actualizar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(username, role, folders) {
+        document.getElementById('modal-username').value = username;
+        document.getElementById('role').value = role;
+        document.getElementById('folders').value = folders;
+        document.getElementById('myModal').style.display = "block";
+    }
+
+    function closeModal() {
+        document.getElementById('myModal').style.display = "none";
+    }
+</script>
+{% endblock %}

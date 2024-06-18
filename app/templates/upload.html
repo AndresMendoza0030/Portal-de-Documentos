@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Raleway', sans-serif;
+        background-color: #f4f4f4;
+    }
+
+    .file-upload-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .file-upload-header {
+        width: 100%;
+        max-width: 600px;
+        padding: 20px 10px;
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .file-upload-form {
+        width: 100%;
+        max-width: 600px;
+        margin-top: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        font-family: 'Raleway', sans-serif;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .submit-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .submit-button:hover {
+        background-color: #a00;
+    }
+
+    #folder-tree {
+        margin-top: 20px;
+    }
+</style>
+
+<div class="file-upload-container">
+    <div class="file-upload-header">
+        <h1>Subir Archivo</h1>
+        <p>Selecciona un archivo y una carpeta de destino.</p>
+    </div>
+    <form class="file-upload-form" method="POST" enctype="multipart/form-data" action="{{ url_for('document.upload_file') }}">
+        <div class="form-group">
+            <label for="selected-folder" class="form-label">Seleccionar Carpeta:</label>
+            <input type="text" id="selected-folder" name="selected-folder" class="form-control" readonly>
+            <div id="folder-tree"></div>
+        </div>
+        <div class="form-group">
+            <label for="file" class="form-label">Selecciona un archivo:</label>
+            <input type="file" name="file" id="file" class="form-control">
+        </div>
+        <button type="submit" class="submit-button">Subir Archivo</button>
+    </form>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#folder-tree').jstree({
+            'core': {
+                'data': {{ folder_tree_data|tojson }},
+                'themes': {
+                    'name': 'default',
+                    'dots': true,
+                    'icons': true
+                }
+            }
+        });
+
+        $('#folder-tree').on('select_node.jstree', function(e, data) {
+            var selectedPath = data.node.original.path;
+            $('#selected-folder').val(selectedPath);
+        });
+    });
+</script>
+{% endblock %}

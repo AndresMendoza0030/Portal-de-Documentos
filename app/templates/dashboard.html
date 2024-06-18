@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .welcome-message {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .quick-links, .recent-activities, .recent-documents, .notifications {
+        width: 100%;
+        max-width: 1000px;
+        margin-bottom: 20px;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .quick-links h2, .recent-activities h2, .recent-documents h2, .notifications h2 {
+        margin-top: 0;
+    }
+
+    .quick-links ul, .recent-activities ul, .recent-documents ul, .notifications ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .quick-links ul li, .recent-activities ul li, .recent-documents ul li, .notifications ul li {
+        margin: 10px 0;
+    }
+
+    .quick-links a, .recent-activities a, .recent-documents a, .notifications a {
+        text-decoration: none;
+        color: #D10A11;
+    }
+
+    .quick-links a:hover, .recent-activities a:hover, .recent-documents a:hover, .notifications a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="welcome-message">
+        <h1>Bienvenido al Centro Virtual de Documentación</h1>
+        <p>Hola, {{ session['username'] }}. Aquí tienes un resumen de tus actividades y accesos rápidos a las funcionalidades principales.</p>
+    </div>
+    
+    <div class="quick-links">
+        <h2>Accesos Rápidos</h2>
+        <ul>
+            <li><a href="{{ url_for('dashboard.dashboard') }}">Mis Documentos</a></li>
+            <li><a href="{{ url_for('audit.auditoria') }}">Auditoría</a></li>
+            <li><a href="{{ url_for('backup.respaldo') }}">Respaldo</a></li>
+            <li><a href="{{ url_for('configuracion.configuracion') }}">Configuración</a></li>
+            <li><a href="{{ url_for('ayuda.ayuda') }}">Ayuda</a></li>
+        </ul>
+    </div>
+    
+    <div class="recent-activities">
+        <h2>Actividades Recientes</h2>
+        <ul>
+            <li>Actividad 1</li>
+            <li>Actividad 2</li>
+            <li>Actividad 3</li>
+        </ul>
+    </div>
+    
+    <div class="recent-documents">
+        <h2>Documentos Recientes</h2>
+        <ul>
+            <li><a href="#">Documento 1</a></li>
+            <li><a href="#">Documento 2</a></li>
+            <li><a href="#">Documento 3</a></li>
+        </ul>
+    </div>
+    
+    <div class="notifications">
+        <h2>Notificaciones</h2>
+        <ul>
+            <li>Notificación 1</li>
+            <li>Notificación 2</li>
+            <li>Notificación 3</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

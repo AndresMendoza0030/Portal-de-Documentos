@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Raleway', sans-serif;
+        background-color: #f4f4f4';
+    }
+
+    .backup-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .backup-header {
+        width: 100%;
+        max-width: 800px;
+        padding: 20px 10px;
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .backup-history {
+        width: 100%;
+        max-width: 800px;
+        margin-top: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .backup-history table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .backup-history th, .backup-history td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .backup-history th {
+        background-color: #f2f2f2;
+    }
+
+    .backup-button, .download-all-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .backup-button:hover, .download-all-button:hover {
+        background-color: #a00;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .pagination a {
+        margin: 0 5px;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        color: #1B878F;
+        text-decoration: none;
+        border-radius: 5px;
+    }
+
+    .pagination a:hover {
+        background-color: #1B878F;
+        color: #fff;
+    }
+
+    .pagination .current {
+        background-color: #1B878F;
+        color: #fff;
+        pointer-events: none;
+    }
+</style>
+
+<div class="backup-container">
+    <div class="backup-header">
+        <h1>Historial de Respaldo</h1>
+        <p>Visualiza y gestiona los respaldos del sistema.</p>
+        <form method="POST" action="{{ url_for('backup.manual_backup') }}" style="display: inline;">
+            <button type="submit" class="backup-button">Hacer Respaldo Manual</button>
+        </form>
+        <a href="{{ url_for('backup.download_all_backups') }}" class="download-all-button">Descargar Todos los Respaldos (RAR)</a>
+    </div>
+    <div class="backup-history">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha de Respaldo</th>
+                    <th>Nombre del Archivo</th>
+                    <th>Autor</th>
+                    <th>Versión</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for backup in backups %}
+                <tr>
+                    <td>{{ backup.fecha }}</td>
+                    <td>{{ backup.archivo }}</td>
+                    <td>{{ backup.autor }}</td>
+                    <td>{{ backup.version }}</td>
+                    <td>
+                        <a href="{{ url_for('backup.download_backup', filename=backup.archivo) }}" class="backup-button">Descargar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="pagination">
+            {% for p in range(1, (total // per_page) + 2) %}
+                <a href="{{ url_for('backup.respaldo', page=p) }}" class="{{ 'current' if p == page else '' }}">{{ p }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

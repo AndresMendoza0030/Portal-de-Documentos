@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Raleway', sans-serif;
+        background-color: #f4f4f4;
+    }
+
+    .view-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .view-header {
+        width: 100%;
+        max-width: 1000px;
+        padding: 20px 10px;
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .document-viewer {
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .form-group {
+        margin-top: 20px;
+        width: 100%;
+        max-width: 1000px;
+    }
+
+    .form-label {
+        font-family: 'Raleway', sans-serif;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .submit-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .submit-button:hover {
+        background-color: #a00;
+    }
+</style>
+
+<div class="view-container">
+    <div class="view-header">
+        <h1>Visualizar Documento</h1>
+    </div>
+    <div class="document-viewer">
+        <p><strong>Archivo:</strong> {{ filename }}</p>
+        <p><a href="{{ file_url }}" target="_blank">Descargar Documento</a></p>
+    </div>
+    <div class="form-group">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('document.view_file', filename=filename) }}">
+            <label for="file" class="form-label">Selecciona un archivo para reemplazar:</label>
+            <input type="file" name="file" id="file" class="form-control">
+            <input type="hidden" name="original-filename" value="{{ filename }}">
+            <button type="submit" class="submit-button">Reemplazar Archivo</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

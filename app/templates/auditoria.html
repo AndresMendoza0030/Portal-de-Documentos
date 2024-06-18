@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Raleway', sans-serif;
+        background-color: #f4f4f4;
+    }
+
+    .audit-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .audit-header {
+        width: 100%;
+        max-width: 1000px;
+        padding: 20px 10px;
+        background-color: #1B878F;
+        color: #FFFFFF;
+        border-radius: 10px;
+        text-align: center;
+        font-family: 'Raleway', sans-serif;
+    }
+
+    .audit-table {
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 20px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    table, th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    th {
+        background-color: #1B878F;
+        color: white;
+    }
+
+    .download-buttons {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 200px;
+        gap:20px;
+    }
+
+    .download-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .download-button:hover {
+        background-color: #a00;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .pagination a {
+        margin: 0 5px;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        color: #1B878F;
+        text-decoration: none;
+        border-radius: 5px;
+    }
+
+    .pagination a:hover {
+        background-color: #1B878F;
+        color: #fff;
+    }
+
+    .pagination .current {
+        background-color: #1B878F;
+        color: #fff;
+        pointer-events: none;
+    }
+    .filter-button {
+            padding: 10px 20px;
+            background-color: #D10A11;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px
+
+        }
+
+        .filter-button:hover {
+            background-color: #a00;
+        }
+</style>
+
+<div class="audit-container">
+    <div class="audit-header" style="margin-bottom: 20px;">
+        <h1>Historial de Auditoría</h1>
+    </div>
+    <form method="get" action="{{ url_for('audit.auditoria') }}" style=" font-family: 'Raleway', sans-serif; font-weight:600;">
+        <label for="start_date">Fecha de Inicio:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}" style=" font-family: 'Raleway', sans-serif; font-weight: normal">
+        <label for="end_date" style="margin-left: 10px;">Fecha de Fin:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}" style=" font-family: 'Raleway', sans-serif; font-weight: normal;">
+        <button type="submit" class="filter-button">Filtrar</button>
+    </form>
+    <div class="audit-table">
+        <table>
+            <tr>
+                <th>Fecha de Subida</th>
+                <th>Documento</th>
+                <th>Autor</th>
+                <th>Fecha de Edición</th>
+                <th>Usuario</th>
+                <th>Versión</th>
+            </tr>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro['fecha_subida'] }}</td>
+                <td>{{ registro['documento'] }}</td>
+                <td>{{ registro['autor'] }}</td>
+                <td>{{ registro['fecha_edicion'] }}</td>
+                <td>{{ registro['usuario'] }}</td>
+                <td>{{ registro['version'] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div class="download-buttons">
+            <a href="{{ url_for('audit.export_auditoria_pdf') }}" class="download-button">Descargar PDF</a>
+            <a href="{{ url_for('audit.export_auditoria_excel') }}" class="download-button">Descargar Excel</a>
+        </div>
+        <div class="pagination">
+            {% for p in range(1, (total // per_page) + 2) %}
+                <a href="{{ url_for('audit.auditoria', page=p) }}" class="{{ 'current' if p == page else '' }}">{{ p }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
