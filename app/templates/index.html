@@ -2,100 +2,84 @@
 
 {% block content %}
 <style>
-    .file-explorer-container {
+    .landing-container {
+        position: relative;
+        text-align: center;
+        color: white;
+        height: 400px; /* Establece una altura específica para el contenedor del banner */
+    }
+
+    .banner-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Asegura que la imagen se ajuste al contenedor sin distorsionarse */
+    }
+
+    .banner-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
+        justify-content: center;
         align-items: center;
-        padding: 20px;
-        flex: 1; /* Asegura que ocupe el espacio disponible */
-    }
-
-    .file-explorer-header {
-        width: 100%;
-        max-width: 1000px;
-        margin-bottom: 20px;
-        padding: 20px 10px; /* Incrementar el padding vertical para más altura */
-        background-color: #1B878F;
-        color: #FFFFFF;
-        border-radius: 10px;
-        text-align: center;
-    }
-
-    .file-list {
-        width: 100%;
-        max-width: 1000px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        flex: 1; /* Asegura que ocupe el espacio disponible */
-        overflow-y: auto; /* Permite el scroll si hay muchos archivos */
-    }
-
-    .file-item {
-        width: 200px;
-        padding: 15px;
-        background-color: #fff;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .file-item img {
-        width: 100px;
-        height: 100px;
-        object-fit: contain;
-        margin-bottom: 10px;
-    }
-
-    .file-item a {
-        text-decoration: none;
-        color: #D10A11;
+        background-color: rgba(0, 0, 0, 0.4);
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
+        font-family: 'Raleway', sans-serif;
         font-weight: bold;
+        z-index: 1;
+        font-size: xx-large;
     }
 
-    .file-item a:hover {
-        text-decoration: underline;
+    .description {
+        margin: 20px auto;
+        width: 80%;
+        padding: 20px;
+        background-color: #f5f5f5;
+        border-radius: 10px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: #02203C;
     }
 
-    .upload-button {
-        margin-top: 20px;
-        padding: 10px 20px;
-        background-color: #D10A11;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        text-decoration: none;
+    .fade-in {
+        animation: fadeIn 2s;
     }
 
-    .upload-button:hover {
-        background-color: #a00;
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
     }
 </style>
 
-<div class="file-explorer-container">
-    <div class="file-explorer-header">
-        <h1>Explorador de Archivos</h1>
-        <p>Selecciona un archivo para visualizar o descargar.</p>
-        <a href="{{ url_for('document.upload_file') }}" class="upload-button">Subir Nuevo Archivo</a>
-    </div>
-
-    <div class="file-list">
-        {% for file in files %}
-        <div class="file-item">
-            {% if file.endswith('.pptx') %}
-            <img src="{{ url_for('static', filename='images/icons/pptx.png') }}" alt="PPTX">
-            {% elif file.endswith('.docx') %}
-            <img src="{{ url_for('static', filename='images/icons/docx.png') }}" alt="DOCX">
-            {% elif file.endswith('.pdf') %}
-            <img src="{{ url_for('static', filename='images/icons/pdf.png') }}" alt="PDF">
-            {% elif file.endswith('.xlsx') %}
-            <img src="{{ url_for('static', filename='images/icons/xlsx.png') }}" alt="XLSX">
-            {% endif %}
-            <a href="{{ url_for('uploaded_file', filename=file) }}">{{ file }}</a>
-        </div>
-        {% endfor %}
+<div class="landing-container fade-in">
+    <img src="{{ url_for('static', filename='images/banner.jpg') }}" alt="Banner" class="banner-image">
+    <div class="banner-text">
+        <h1>Centro Virtual de Documentación</h1>
+        <p>Gestión y Acceso a Documentos en un Solo Lugar</p>
     </div>
 </div>
+
+<div class="description">
+    <h2>Centro Virtual de Documentación</h2>
+    <p>Nuestro portal de documentación proporciona una solución integral para la gestión y acceso a documentos importantes dentro de la organización.</p>
+    <p>Con nuestra plataforma, los usuarios pueden:</p>
+    <ul>
+        <li>Subir y almacenar documentos de manera segura.</li>
+        <li>Acceder a documentos desde cualquier lugar y en cualquier momento.</li>
+        <li>Colaborar en la edición y actualización de archivos en tiempo real.</li>
+     
+        <li>Realizar auditorías de cambios para mantener un historial de modificaciones.</li>
+        <li>Recuperar versiones anteriores de documentos gracias a nuestro sistema de respaldo.</li>
+    </ul>
+    <p>Estamos comprometidos con la eficiencia y seguridad en la gestión documental, facilitando el trabajo colaborativo y el acceso a la información relevante.</p>
+</div>
+
 {% endblock %}
