@@ -246,8 +246,7 @@ def get_subfolders():
 def create_folder():
     if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect(url_for('auth.login'))
-    conn = get_db_connection()
-   
+
     folder_name = request.form['folder_name']
     parent_folder = request.form['parent_folder']
     if not parent_folder:
@@ -256,15 +255,18 @@ def create_folder():
 
     parent_folder_path = os.path.join(current_app.config['UPLOAD_FOLDER'], parent_folder)
     new_folder_path = os.path.join(parent_folder_path, folder_name)
+
     try:
         os.makedirs(new_folder_path, exist_ok=True)
         print(f'Folder created successfully: {new_folder_path}')
 
         # Registro en la tabla de auditoría
-        conn.execute('INSERT INTO auditoria (fecha_subida, documento,  autor) VALUES (?,  ?, ?)',
-                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Creó Carpeta {folder_name}',  session['username']))
+        conn = get_db_connection()
+        conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
+                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Creó Carpeta {new_folder_path}', session['username']))
         conn.commit()
         conn.close()
+        print("Audit record inserted")
         return 'success', 200
     except OSError as e:
         print(f'Error creating folder: {str(e)}')
@@ -272,8 +274,6 @@ def create_folder():
 
 @bp.route('/delete_folder', methods=['POST'])
 def delete_folder():
-    conn = get_db_connection()
-    
     if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect(url_for('auth.login'))
 
@@ -283,14 +283,19 @@ def delete_folder():
         return 'error: missing folder_path', 400
 
     full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], folder_path)
-    conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Carpeta {folder_path}',  session['username']))
-    conn.commit()
-    conn.close()
+
     try:
         if os.path.exists(full_path) and os.path.isdir(full_path):
             shutil.rmtree(full_path)
             print(f'Folder deleted successfully: {full_path}')
+
+            # Registro en la tabla de auditoría
+            conn = get_db_connection()
+            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Carpeta {full_path}', session['username']))
+            conn.commit()
+            conn.close()
+            print("Audit record inserted")
             return 'success', 200
         else:
             print(f'Folder does not exist: {full_path}')
@@ -301,37 +306,31 @@ def delete_folder():
 
 @bp.route('/delete_file', methods=['POST'])
 def delete_file():
-    conn = get_db_connection()
-    
     if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect(url_for('auth.login'))
 
     file_path = request.form.get('folder_path')
-    # Extrae el nombre del archivo del path
-    filename = os.path.basename(file_path)
-    
-    # Consulta en la base de datos usando el nombre del archivo
-    previous_entry = conn.execute('SELECT * FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (filename,)).fetchone()
-    
     if not file_path:
-        print('Folder path is missing.')
-        return 'error: missing folder_path', 400
-    # Extrae el nombre del archivo del path
-  
-    
+        print('File path is missing.')
+        return 'error: missing file_path', 400
+
     full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file_path)
+    filename = os.path.basename(file_path)
 
     try:
-        if os.path.exists(full_path) and os.path.isfile(full_path): # Registro en la tabla de auditoría
-            previous_version = float(previous_entry['version'])
-            conn.execute('INSERT INTO auditoria (fecha_subida, documento,  autor, usuario,version) VALUES (?, ?, ?,?,? )',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Archivo {file_path}',  session['username'], session['username'],previous_version))
+        if os.path.exists(full_path) and os.path.isfile(full_path):
             os.remove(full_path)
             print(f'File deleted successfully: {full_path}')
+
+            # Registro en la tabla de auditoría
+            conn = get_db_connection()
+            previous_entry = conn.execute('SELECT version FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (filename,)).fetchone()
+            previous_version = float(previous_entry['version']) if previous_entry else 1.0
+            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, usuario, version) VALUES (?, ?, ?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Archivo {file_path}', session['username'], session['username'], previous_version))
             conn.commit()
             conn.close()
-           
-            
+            print("Audit record inserted")
             return 'success', 200
         else:
             print(f'File does not exist: {full_path}')
@@ -345,12 +344,12 @@ def rename():
     if not session.get('logged_in') or session.get('role') != 'admin':
         print("Access denied: User not logged in or not admin")
         return redirect(url_for('auth.login'))
-    
+
     old_path = request.form['old_path']
     new_name = request.form['new_name']
     full_old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_path)
     new_path = os.path.join(os.path.dirname(full_old_path), new_name)
-    
+
     print(f"Old path: {old_path}")
     print(f"New name: {new_name}")
     print(f"Full old path: {full_old_path}")
@@ -361,13 +360,13 @@ def rename():
             os.rename(full_old_path, new_path)
             print(f"Renamed {full_old_path} to {new_path}")
 
+            # Registro en la tabla de auditoría
             conn = get_db_connection()
             conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
                          (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Renombró {old_path} a {new_name}', session['username']))
             conn.commit()
             conn.close()
             print("Audit record inserted")
-
             return 'success', 200
         else:
             print(f"File/folder does not exist: {full_old_path}")
