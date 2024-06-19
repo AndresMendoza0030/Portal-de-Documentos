@@ -208,7 +208,7 @@ def uploaded_file(filename):
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
 
 
-@bp.route('/documents/download/<filename>')
+@bp.route('/documents/download/<path:filename>')
 def download_document(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
@@ -224,7 +224,11 @@ def download_document(filename):
         flash(f'El archivo {filename} no existe en la carpeta de respaldos.')
         return redirect(url_for('backup.respaldo'))
 
-    return send_from_directory(backup_folder, filename, as_attachment=True)
+    directory = os.path.dirname(backup_path)
+    file_to_send = os.path.basename(backup_path)
+    
+    return send_from_directory(directory, file_to_send, as_attachment=True)
+
 
 @bp.route('/get_subfolders', methods=['POST'])
 def get_subfolders():
