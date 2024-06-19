@@ -48,6 +48,8 @@ def get_file_tree(folder, allowed_folders):
         tree = []
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
+            if item == '.gitkeep':
+                continue
             if os.path.isdir(item_path):
                 if any(allowed in item_path for allowed in allowed_folders):
                     tree.append({

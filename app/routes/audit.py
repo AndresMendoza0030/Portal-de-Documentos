@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session, send_from_directory, flash, current_app, Response, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request, session, send_from_directory, flash, current_app, Response
 from datetime import datetime
 from ..models import get_db_connection
 import pandas as pd
@@ -57,7 +57,7 @@ class PDF(FPDF):
 
     def add_table(self, registros):
         self.set_font('Arial', 'B', 10)
-        col_widths = [40, 80, 20, 40, 20, 15]
+        col_widths = [40, 120, 20, 40, 20, 15]
         col_headers = ['Fecha de Subida', 'Documento', 'Autor', 'Fecha de Edición', 'Usuario', 'Versión']
 
         for col_header, col_width in zip(col_headers, col_widths):
@@ -82,14 +82,17 @@ def export_auditoria_pdf():
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    filename_pdf = request.args.get('filename_pdf', 'auditoria.pdf')
 
     conn = get_db_connection()
     query = 'SELECT * FROM auditoria'
     params = []
 
-    if start_date and end_date:
+    if start_date and end_date and start_date != 'None' and end_date != 'None':
         query += ' WHERE fecha_subida BETWEEN ? AND ?'
         params.extend([start_date, end_date])
+
+    query += ' ORDER BY fecha_subida DESC'
 
     registros = conn.execute(query, params).fetchall()
     conn.close()
@@ -99,7 +102,7 @@ def export_auditoria_pdf():
     pdf.add_table(registros)
 
     response = Response(pdf.output(dest='S').encode('latin1'), mimetype='application/pdf')
-    response.headers['Content-Disposition'] = 'attachment; filename=auditoria.pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename_pdf}'
     return response
 
 @bp.route('/auditoria/export/excel')
@@ -109,20 +112,23 @@ def export_auditoria_excel():
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    filename_excel = request.args.get('filename_excel', 'auditoria.xlsx')
 
     conn = get_db_connection()
     query = 'SELECT * FROM auditoria'
     params = []
 
-    if start_date and end_date:
+    if start_date and end_date and start_date != 'None' and end_date != 'None':
         query += ' WHERE fecha_subida BETWEEN ? AND ?'
         params.extend([start_date, end_date])
+
+    query += ' ORDER BY fecha_subida DESC'
 
     registros = conn.execute(query, params).fetchall()
     conn.close()
 
     df = pd.DataFrame(registros, columns=['id', 'fecha_subida', 'documento', 'autor', 'fecha_edicion', 'usuario', 'version'])
-    output = os.path.join(current_app.config['TEMP_FOLDER'], 'auditoria.xlsx')
+    output = os.path.join(current_app.config['TEMP_FOLDER'], filename_excel)
     df.to_excel(output, index=False, sheet_name='Auditoria')
 
-    return send_from_directory(current_app.config['TEMP_FOLDER'], 'auditoria.xlsx', as_attachment=True)
+    return send_from_directory(current_app.config['TEMP_FOLDER'], filename_excel, as_attachment=True)
