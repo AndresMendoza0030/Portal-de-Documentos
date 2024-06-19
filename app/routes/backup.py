@@ -59,7 +59,10 @@ def download_backup(filename):
     
     backup_folder = current_app.config['BACKUP_FOLDER']
     backup_path = os.path.join(backup_folder, filename)
-    
+     # Impresiones para depuración
+    print(f"Folder: {backup_folder}")
+    print(f"Filename: {filename}")
+    print(f"Backup Path: {backup_path}")
     if not os.path.exists(backup_path):
         flash(f'El archivo {filename} no existe en la carpeta de respaldos.')
         return redirect(url_for('backup.respaldo'))

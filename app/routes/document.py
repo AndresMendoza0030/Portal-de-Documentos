@@ -7,6 +7,7 @@ from ..models import get_db_connection, get_backup_db_connection, get_user_role,
 import tarfile
 import zipfile
 import shutil
+from config import Config
 
 bp = Blueprint('document', __name__)
 
@@ -159,31 +160,6 @@ def handle_file_replacement(file, filename, upload_path):
                 raise
     create_backup(is_individual=True, file_path=upload_path)
 
-def handle_file_replacement(file, filename, upload_path):
-    file.save(upload_path)
-    for attempt in range(5):
-        try:
-            conn = get_db_connection()
-            previous_entry = conn.execute('SELECT * FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (filename,)).fetchone()
-            
-            if previous_entry:
-                previous_version = float(previous_entry['version'])
-                new_version = previous_version + 0.1
-                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
-                             (previous_entry['fecha_subida'], filename, previous_entry['autor'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], f'{new_version:.1f}'))
-            else:
-                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
-                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), filename, session['username'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], '1.0'))
-            conn.commit()
-            conn.close()
-            break
-        except sqlite3.OperationalError as e:
-            if "database is locked" in str(e):
-                time.sleep(1)
-            else:
-                raise
-    create_backup(is_individual=True, file_path=upload_path)
-
 def handle_new_file_upload(file, filename, upload_path):
     file.save(upload_path)
     for attempt in range(5):
@@ -199,40 +175,56 @@ def handle_new_file_upload(file, filename, upload_path):
                 time.sleep(1)
             else:
                 raise
+
 @bp.route('/view/<path:filename>', methods=['GET', 'POST'])
 def view_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
-    
-    full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     if request.method == 'POST':
-        file = request.files.get('file')
+        if 'file' not in request.files or 'original-filename' not in request.form:
+            flash('Archivo no seleccionado o nombre de archivo original no encontrado.')
+            return redirect(request.url)
+        file = request.files['file']
+        original_filename = request.form['original-filename'].split("\\")[-1]  # Extraer solo el nombre del archivo
+        if file.filename == '' or file.filename != original_filename:
+            flash('El archivo seleccionado no coincide con el archivo original.')
+            return redirect(request.url)
         if file and allowed_file(file.filename):
-            file.save(full_path)
-            flash('Archivo reemplazado con éxito.')
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(upload_path):
+                handle_file_replacement(file, filename, upload_path)
+                flash(f'Archivo {original_filename} reemplazado con éxito.')
+            else:
+                flash('El archivo no existe para ser reemplazado')
             return redirect(url_for('document.view_file', filename=filename))
-        else:
-            flash('Error al subir el archivo. Asegúrate de que el archivo sea del tipo permitido.')
     
-    # Genera la URL para la descarga del archivo correctamente
     file_url = url_for('document.uploaded_file', filename=filename, _external=True)
     return render_template('view_file.html', filename=filename, file_url=file_url)
 
-
-@bp.route('/uploads/<path:filename>', methods=['GET'])
+@bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
+
+@bp.route('/documents/download/<filename>')
+def download_document(filename):
+    if not session.get('logged_in'):
+        return redirect(url_for('auth.login'))
     
-    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    if not os.path.exists(file_path):
-        flash('El archivo no existe.')
-        return redirect(url_for('document.documents'))
+    backup_folder = current_app.config['UPLOAD_FOLDER']
+    backup_path = os.path.join(backup_folder, filename)
     
-    # Asegúrate de usar send_from_directory correctamente
-    directory = os.path.dirname(file_path)
-    filename = os.path.basename(file_path)
-    return send_from_directory(directory, filename)
+    # Impresiones para depuración
+    print(f"Filename: {filename}")
+    print(f"Backup Path: {backup_path}")
+    
+    if not os.path.exists(backup_path):
+        flash(f'El archivo {filename} no existe en la carpeta de respaldos.')
+        return redirect(url_for('backup.respaldo'))
+
+    return send_from_directory(backup_folder, filename, as_attachment=True)
 
 @bp.route('/get_subfolders', methods=['POST'])
 def get_subfolders():
@@ -243,6 +235,7 @@ def get_subfolders():
     if os.path.isdir(folder_path):
         subfolders = [name for name in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, name))]
     return {'subfolders': subfolders}
+
 @bp.route('/create_folder', methods=['POST'])
 def create_folder():
     if not session.get('logged_in') or session.get('role') != 'admin':
@@ -290,13 +283,8 @@ def delete_folder():
     conn.close()
     try:
         if os.path.exists(full_path) and os.path.isdir(full_path):
-              # Registro en la tabla de auditoría
-           
             shutil.rmtree(full_path)
             print(f'Folder deleted successfully: {full_path}')
-
-          
-            
             return 'success', 200
         else:
             print(f'Folder does not exist: {full_path}')
