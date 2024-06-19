@@ -341,6 +341,7 @@ def delete_file():
 @bp.route('/rename', methods=['POST'])
 def rename():
     if not session.get('logged_in') or session.get('role') != 'admin':
+        print("Access denied: User not logged in or not admin")
         return redirect(url_for('auth.login'))
     
     old_path = request.form['old_path']
@@ -348,20 +349,27 @@ def rename():
     full_old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_path)
     new_path = os.path.join(os.path.dirname(full_old_path), new_name)
     
+    print(f"Old path: {old_path}")
+    print(f"New name: {new_name}")
+    print(f"Full old path: {full_old_path}")
+    print(f"New path: {new_path}")
+
     try:
         if os.path.exists(full_old_path):
             os.rename(full_old_path, new_path)
-            
+            print(f"Renamed {full_old_path} to {new_path}")
+
             conn = get_db_connection()
             conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
                          (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Renombró {old_path} a {new_name}', session['username']))
             conn.commit()
             conn.close()
-            
+            print("Audit record inserted")
+
             return 'success', 200
         else:
-            print(f'File/folder does not exist: {full_old_path}')
+            print(f"File/folder does not exist: {full_old_path}")
             return 'error: file/folder does not exist', 400
     except Exception as e:
-        print(f'Error renaming: {str(e)}')
+        print(f"Error renaming: {str(e)}")
         return f'error: {str(e)}', 400
