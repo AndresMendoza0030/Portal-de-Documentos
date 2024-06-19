@@ -159,6 +159,31 @@ def handle_file_replacement(file, filename, upload_path):
                 raise
     create_backup(is_individual=True, file_path=upload_path)
 
+def handle_file_replacement(file, filename, upload_path):
+    file.save(upload_path)
+    for attempt in range(5):
+        try:
+            conn = get_db_connection()
+            previous_entry = conn.execute('SELECT * FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (filename,)).fetchone()
+            
+            if previous_entry:
+                previous_version = float(previous_entry['version'])
+                new_version = previous_version + 0.1
+                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
+                             (previous_entry['fecha_subida'], filename, previous_entry['autor'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], f'{new_version:.1f}'))
+            else:
+                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
+                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), filename, session['username'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], '1.0'))
+            conn.commit()
+            conn.close()
+            break
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                time.sleep(1)
+            else:
+                raise
+    create_backup(is_individual=True, file_path=upload_path)
+
 def handle_new_file_upload(file, filename, upload_path):
     file.save(upload_path)
     for attempt in range(5):
@@ -174,19 +199,40 @@ def handle_new_file_upload(file, filename, upload_path):
                 time.sleep(1)
             else:
                 raise
-
-@bp.route('/view/<path:filename>')
+@bp.route('/view/<path:filename>', methods=['GET', 'POST'])
 def view_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
+    
+    full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if file and allowed_file(file.filename):
+            file.save(full_path)
+            flash('Archivo reemplazado con éxito.')
+            return redirect(url_for('document.view_file', filename=filename))
+        else:
+            flash('Error al subir el archivo. Asegúrate de que el archivo sea del tipo permitido.')
+    
+    # Genera la URL para la descarga del archivo correctamente
     file_url = url_for('document.uploaded_file', filename=filename, _external=True)
     return render_template('view_file.html', filename=filename, file_url=file_url)
 
-@bp.route('/uploads/<path:filename>')
+
+@bp.route('/uploads/<path:filename>', methods=['GET'])
 def uploaded_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    
+    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(file_path):
+        flash('El archivo no existe.')
+        return redirect(url_for('document.documents'))
+    
+    # Asegúrate de usar send_from_directory correctamente
+    directory = os.path.dirname(file_path)
+    filename = os.path.basename(file_path)
+    return send_from_directory(directory, filename)
 
 @bp.route('/get_subfolders', methods=['POST'])
 def get_subfolders():
@@ -302,8 +348,6 @@ def delete_file():
 
 @bp.route('/rename', methods=['POST'])
 def rename():
-    conn = get_db_connection()
-    
     if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect(url_for('auth.login'))
     
@@ -311,17 +355,16 @@ def rename():
     new_name = request.form['new_name']
     full_old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_path)
     new_path = os.path.join(os.path.dirname(full_old_path), new_name)
-    # Registro en la tabla de auditoría
-    conn.execute('INSERT INTO auditoria (fecha_subida, documento,  autor) VALUES (?, ?, ?)',
-    (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Renombró Archivo {old_path} a {new_name}', session['username']))
-    conn.commit()
-    conn.close()
+    
     try:
         if os.path.exists(full_old_path):
             os.rename(full_old_path, new_path)
-            print(f'Renamed successfully from {full_old_path} to {new_path}')
-
             
+            conn = get_db_connection()
+            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Renombró {old_path} a {new_name}', session['username']))
+            conn.commit()
+            conn.close()
             
             return 'success', 200
         else:
