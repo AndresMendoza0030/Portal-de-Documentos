@@ -20,19 +20,15 @@ header nav ul li a {
     display: inline-block;
     font-family: 'Raleway', sans-serif;
     font-weight: bold;
+    
 }
 
 header nav ul li a:hover {
     color: #D10A11;
 }
 
-header nav ul li {
-    border-right: 1px solid #D10A11;
-    padding: 5px;
-}
-
-header nav ul li:last-child {
-    border-right: none;
+.separator-icon {
+    color: #D10A11; /* Cambia el color del icono aquí */
 }
 
 footer {

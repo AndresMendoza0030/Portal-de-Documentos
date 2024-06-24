@@ -1,29 +1,49 @@
+
 <link rel="icon" sizes="192x192" href="https://static.wixstatic.com/media/1cfed0_760e03c630434496be5ba8844d973547%7Emv2.png/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/1cfed0_760e03c630434496be5ba8844d973547%7Emv2.png" type="image/png"/>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
-<header style="background-color: #FFFFFF; color: #000000; padding: 10px; display: flex; align-items: center;">
-    <img src="{{ url_for('static', filename='images/logo.webp') }}" alt="Logo" style="margin-right: 20px; height:86px; width: auto;">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<header style="background-color: #FFFFFF; padding: 10px; display: flex; align-items: center; box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;">
+    <img src="/static/images/logo.webp" alt="Logo" style="margin-right: 20px; height:86px; width: auto;">
     <nav style="flex-grow: 1;">
         <ul style="list-style-type: none; display: flex; padding: 0;">
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('dashboard.dashboard') }}">Inicio</a>
             </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+                <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
+            </li>
             {% if session.get('logged_in') %}
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('document.documents') }}">Mis Documentos</a>
+            </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+               <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
             </li>
             {% if session.get('role') == 'admin' %}
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('audit.auditoria') }}">Auditoría</a>
             </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+               <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
+            </li>
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('backup.respaldo') }}">Respaldo</a>
+            </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+               <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
             </li>
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('configuracion.configuracion') }}">Configuración</a>
             </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+               <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
+            </li>
             {% endif %}
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('ayuda.ayuda') }}">Ayuda</a>
+            </li>
+            <li style="margin-right: 10px; display: flex; align-items: center;">
+               <i class="fa-solid fa-grip-lines-vertical separator-icon"></i>
             </li>
             <li style="margin-right: 10px;">
                 <a href="{{ url_for('auth.logout') }}">Cerrar Sesión</a>

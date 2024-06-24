@@ -374,3 +374,59 @@ def rename():
     except Exception as e:
         print(f"Error renaming: {str(e)}")
         return f'error: {str(e)}', 400
+@bp.route('/move', methods=['POST'])
+def move():
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return 'error: Unauthorized', 403
+
+    data = request.json
+    src = data.get('src')
+    dst = data.get('dst')
+
+    print(f"Move request received. Source: {src}, Destination: {dst}")
+
+    if not src or not dst:
+        print("Error: Missing src or dst")
+        return 'error: Missing src or dst', 400
+
+    src_path = os.path.normpath(os.path.join(current_app.config['UPLOAD_FOLDER'], src))
+    dst_path = os.path.normpath(os.path.join(current_app.config['UPLOAD_FOLDER'], dst))
+    temp_path = os.path.normpath(os.path.join(current_app.config['TEMP_FOLDER'], os.path.basename(src)))
+
+    print(f"Source Path: {src_path}")
+    print(f"Destination Path: {dst_path}")
+    print(f"Temporary Path: {temp_path}")
+
+    if not os.path.exists(src_path):
+        print("Error: Source path does not exist.")
+        return 'error: Source path does not exist', 404
+
+    if os.path.exists(dst_path):
+        print("Error: Destination path already exists.")
+        return 'error: Destination path already exists', 400
+
+    try:
+        os.makedirs(current_app.config['TEMP_FOLDER'], exist_ok=True)
+        if os.path.isdir(src_path):
+            shutil.copytree(src_path, temp_path)
+            shutil.rmtree(src_path)
+        else:
+            shutil.copy2(src_path, temp_path)
+            os.remove(src_path)
+
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        shutil.move(temp_path, dst_path)
+        print("Move successful.")
+
+        # Registro en la tabla de auditoría
+        conn = get_db_connection()
+        conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
+                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Movió {src} a {dst}', session['username']))
+        conn.commit()
+        conn.close()
+        print("Audit record inserted")
+
+        return 'success', 200
+    except Exception as e:
+        print(f"Error during move: {str(e)}")
+        return f'error: {str(e)}', 500
