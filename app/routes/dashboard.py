@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
 from ..models import get_recent_documents, get_notifications, get_user_tasks, get_favorite_documents, get_shared_documents, add_user_task, get_user_events, submit_feedback
-
+from datetime import datetime
 bp = Blueprint('dashboard', __name__)
 
 @bp.route('/dashboard')
@@ -30,8 +30,13 @@ def add_task():
 
     task_description = request.form['task_description']
     task_due_date = request.form['task_due_date']
+    
+    # Convertir la fecha a objeto datetime
+    task_due_date = datetime.strptime(task_due_date, '%Y-%m-%d')
+
     add_user_task(session['username'], task_description, task_due_date)
     return redirect(url_for('dashboard.dashboard'))
+
 
 @bp.route('/submit_feedback', methods=['POST'])
 def submit_feedback():

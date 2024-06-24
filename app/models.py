@@ -1,6 +1,6 @@
 import sqlite3
 from flask import current_app
-
+from datetime import datetime
 def get_db_connection():
     conn = sqlite3.connect('auditoria.db', timeout=30)
     conn.row_factory = sqlite3.Row
@@ -91,10 +91,20 @@ def get_recent_activities(username):
 
 def get_recent_documents(username):
     conn = get_usersdb_connection()
-    documents = conn.execute('SELECT * FROM documents WHERE user = ? ORDER BY upload_date DESC LIMIT 5', 
-                             (username,)).fetchall()
+    documents = conn.execute('''
+        SELECT DISTINCT filename 
+        FROM (
+            SELECT * 
+            FROM documents 
+            WHERE user = ? 
+            ORDER BY id DESC
+        ) 
+        ORDER BY id DESC 
+        LIMIT 5
+    ''', (username,)).fetchall()
     conn.close()
     return documents
+
 
 def get_notifications(username):
     conn = get_usersdb_connection()
@@ -115,14 +125,27 @@ def get_user_tasks(username):
     tasks = conn.execute('SELECT * FROM tasks WHERE user = ? ORDER BY due_date', 
                          (username,)).fetchall()
     conn.close()
+
+    # Convertir la fecha a objeto datetime
+    tasks = [
+        {
+            "id": task["id"],
+            "user": task["user"],
+            "description": task["description"],
+            "due_date": datetime.strptime(task["due_date"], '%Y-%m-%d')
+        }
+        for task in tasks
+    ]
+    
     return tasks
 
-def add_user_task(username, description, due_date):
+def add_user_task(username, task_description, task_due_date):
     conn = get_usersdb_connection()
-    conn.execute('INSERT INTO tasks (user, description, due_date) VALUES (?, ?, ?)', 
-                 (username, description, due_date))
+    conn.execute('INSERT INTO tasks (user, description, due_date) VALUES (?, ?, ?)',
+                 (username, task_description, task_due_date.strftime('%Y-%m-%d')))
     conn.commit()
     conn.close()
+
 
 def get_favorite_documents(username):
     conn = get_usersdb_connection()

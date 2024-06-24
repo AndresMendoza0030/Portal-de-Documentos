@@ -3,11 +3,12 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 import time
-from ..models import get_db_connection, get_backup_db_connection, get_user_role, get_user_folders
+from ..models import get_db_connection, get_backup_db_connection, get_user_role, get_user_folders, get_usersdb_connection
 import tarfile
 import zipfile
 import shutil
 from config import Config
+import sqlite3
 
 bp = Blueprint('document', __name__)
 
@@ -216,7 +217,29 @@ def view_file(filename):
                 flash('El archivo no existe para ser reemplazado.')
             return redirect(url_for('document.view_file', filename=filename))
     
+    # Obtener la URL del archivo
     file_url = url_for('document.uploaded_file', filename=filename, _external=True)
+
+    # Registrar el acceso al documento en la base de datos
+    try:
+         conn = get_usersdb_connection()
+
+         # Verificar el número de documentos del usuario
+         user_docs = conn.execute('SELECT id FROM documents WHERE user = ? ORDER BY id', (session['username'],)).fetchall()
+    
+         if len(user_docs) >= 5:
+            oldest_doc_id = user_docs[0]['id']
+            conn.execute('UPDATE documents SET filename = ? WHERE id = ?', (filename, oldest_doc_id))
+         else:
+        # Insertar un nuevo documento
+            conn.execute('INSERT INTO documents (user, filename) VALUES (?, ?)', (session['username'], filename))
+    
+         conn.commit()
+         conn.close()
+        
+    except sqlite3.OperationalError as e:
+        print(f"Error inserting document access record: {e}")
+
     return render_template('view_file.html', filename=filename, file_url=file_url)
 
 @bp.route('/uploads/<path:filename>')
