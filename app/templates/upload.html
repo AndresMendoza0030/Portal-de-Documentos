@@ -74,8 +74,8 @@
 
 <div class="file-upload-container">
     <div class="file-upload-header">
-        <h1>Subir Archivo</h1>
-        <p>Selecciona un archivo y una carpeta de destino.</p>
+        <h1>Subir Archivos</h1>
+        <p>Selecciona uno o más archivos y una carpeta de destino.</p>
     </div>
     <form class="file-upload-form" method="POST" enctype="multipart/form-data" action="{{ url_for('document.upload_file') }}">
         <div class="form-group">
@@ -84,10 +84,10 @@
             <div id="folder-tree"></div>
         </div>
         <div class="form-group">
-            <label for="file" class="form-label">Selecciona un archivo:</label>
-            <input type="file" name="file" id="file" class="form-control">
+            <label for="files" class="form-label">Selecciona archivos:</label>
+            <input type="file" name="files" id="files" class="form-control" multiple>
         </div>
-        <button type="submit" class="submit-button">Subir Archivo</button>
+        <button type="submit" class="submit-button">Subir Archivos</button>
     </form>
 </div>
 
@@ -107,8 +107,23 @@
             }
         });
 
+        function getNodePath(node) {
+            var path = node.text;
+            var parent = $("#folder-tree").jstree(true).get_parent(node);
+
+            while (parent) {
+                var parentNode = $("#folder-tree").jstree(true).get_node(parent);
+                if (!parentNode || parentNode.id === '#') break; // Stop at root
+                path = parentNode.text + '/' + path;
+                parent = $("#folder-tree").jstree(true).get_parent(parentNode);
+            }
+
+            return path;
+        }
+
         $('#folder-tree').on('select_node.jstree', function(e, data) {
-            var selectedPath = data.node.original.path;
+            var selectedPath = getNodePath(data.node);
+            console.log("Selected path:", selectedPath); // Mensaje de depuración
             $('#selected-folder').val(selectedPath);
         });
     });

@@ -14,7 +14,7 @@
         margin-bottom: 20px;
     }
 
-    .quick-links, .recent-activities, .recent-documents, .notifications {
+    .card {
         width: 100%;
         max-width: 1000px;
         margin-bottom: 20px;
@@ -24,71 +24,134 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
-    .quick-links h2, .recent-activities h2, .recent-documents h2, .notifications h2 {
+    .card h2 {
         margin-top: 0;
     }
 
-    .quick-links ul, .recent-activities ul, .recent-documents ul, .notifications ul {
+    .card ul {
         list-style-type: none;
         padding: 0;
     }
 
-    .quick-links ul li, .recent-activities ul li, .recent-documents ul li, .notifications ul li {
+    .card ul li {
         margin: 10px 0;
     }
 
-    .quick-links a, .recent-activities a, .recent-documents a, .notifications a {
+    .card a {
         text-decoration: none;
         color: #D10A11;
     }
 
-    .quick-links a:hover, .recent-activities a:hover, .recent-documents a:hover, .notifications a:hover {
+    .card a:hover {
         text-decoration: underline;
+    }
+    
+    .submit-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .submit-button:hover {
+        background-color: #a00;
     }
 </style>
 
 <div class="dashboard-container">
     <div class="welcome-message">
         <h1>Bienvenido al Centro Virtual de Documentación</h1>
-        <p>Hola, {{ session['username'] }}. Aquí tienes un resumen de tus actividades y accesos rápidos a las funcionalidades principales.</p>
+        <p>Hola, {{ session['username'] }}. Aquí tienes accesos rápidos a las funcionalidades principales.</p>
     </div>
-    
-    <div class="quick-links">
-        <h2>Accesos Rápidos</h2>
-        <ul>
-            <li><a href="{{ url_for('dashboard.dashboard') }}">Mis Documentos</a></li>
-            <li><a href="{{ url_for('audit.auditoria') }}">Auditoría</a></li>
-            <li><a href="{{ url_for('backup.respaldo') }}">Respaldo</a></li>
-            <li><a href="{{ url_for('configuracion.configuracion') }}">Configuración</a></li>
-            <li><a href="{{ url_for('ayuda.ayuda') }}">Ayuda</a></li>
-        </ul>
-    </div>
-    
-    <div class="recent-activities">
-        <h2>Actividades Recientes</h2>
-        <ul>
-            <li>Actividad 1</li>
-            <li>Actividad 2</li>
-            <li>Actividad 3</li>
-        </ul>
-    </div>
-    
-    <div class="recent-documents">
+    <div class="card">
         <h2>Documentos Recientes</h2>
         <ul>
-            <li><a href="#">Documento 1</a></li>
-            <li><a href="#">Documento 2</a></li>
-            <li><a href="#">Documento 3</a></li>
+            {% for document in recent_documents %}
+            <li><a href="{{ url_for('document.view_file', filename=document.filename) }}">{{ document.filename }}</a></li>
+            {% endfor %}
         </ul>
     </div>
     
-    <div class="notifications">
-        <h2>Notificaciones</h2>
+    
+    <div class="card">
+        <h2>Documentos Favoritos</h2>
         <ul>
-            <li>Notificación 1</li>
-            <li>Notificación 2</li>
-            <li>Notificación 3</li>
+            {% for document in favorite_documents %}
+            <li><a href="{{ url_for('document.view_file', filename=document.filename) }}">{{ document.filename }}</a></li>
+            {% endfor %}
         </ul>
     </div>
+
+    <div class="card">
+        <h2>Documentos Compartidos</h2>
+        <ul>
+            {% for document in shared_documents %}
+            <li><a href="{{ url_for('document.view_file', filename=document.filename) }}">{{ document.filename }}</a> - Compartido por: {{ document.shared_by }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    
+    
+    <div class="card">
+        <h2>Notificaciones</h2>
+        <ul>
+            {% for notification in notifications %}
+            <li>{{ notification.message }} - {{ notification.date.strftime('%Y-%m-%d %H:%M:%S') }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>Tareas Pendientes</h2>
+        <ul>
+            {% for task in user_tasks %}
+            <li>{{ task.description }} - Fecha límite: {{ task.due_date.strftime('%Y-%m-%d') }}</li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="{{ url_for('dashboard.add_task') }}" style=" font-family: 'Raleway', sans-serif;">
+            <input type="text" name="task_description" placeholder="Nueva tarea" style=" font-family: 'Raleway', sans-serif;">
+            <input type="date" name="task_due_date" style=" font-family: 'Raleway', sans-serif;">
+            <button type="submit" class="submit-button">Añadir</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Calendario de Actividades</h2>
+        <div id="calendar"></div>
+    </div>
+
+    <div class="card">
+        <h2>Comentarios y Retroalimentación</h2>
+        <form method="post" action="{{ url_for('dashboard.submit_feedback') }}"> 
+            <textarea name="feedback" placeholder="Escribe tus comentarios aquí..."  style=" font-family: 'Raleway', sans-serif; width: 100%; height: fit-content;" ></textarea>
+            <button type="submit" class="submit-button">Enviar</button>
+        </form>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            events: [
+                {% for event in user_events %}
+                {
+                    title: '{{ event.title }}',
+                    start: '{{ event.start_date }}',
+                    end: '{{ event.end_date }}'
+                },
+                {% endfor %}
+            ]
+        });
+        calendar.render();
+    });
+</script>
 {% endblock %}

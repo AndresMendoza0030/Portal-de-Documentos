@@ -97,28 +97,40 @@ def upload_file():
         return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
-        if 'file' not in request.files or 'selected-folder' not in request.form:
+        if 'files' not in request.files or 'selected-folder' not in request.form:
+            flash('Archivos o carpeta no seleccionados.')
             return redirect(request.url)
-        file = request.files['file']
+        files = request.files.getlist('files')
         selected_folder = request.form['selected-folder']
-        if file.filename == '':
+        if not files or all(file.filename == '' for file in files):
+            flash('No se seleccionaron archivos.')
             return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], selected_folder, filename)
-            os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-            
-            if os.path.exists(upload_path):
-                handle_file_replacement(file, filename, upload_path)
-                flash(f'Archivo {filename} reemplazado con éxito.')
-            else:
-                handle_new_file_upload(file, filename, upload_path)
-                flash(f'Archivo {filename} subido con éxito.')
 
-            return redirect(url_for('document.documents'))
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], selected_folder, filename)
+
+                # Mensajes de depuración
+                print(f"selected_folder: {selected_folder}")
+                print(f"UPLOAD_FOLDER: {current_app.config['UPLOAD_FOLDER']}")
+                print(f"upload_path: {upload_path}")
+
+                os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+
+                if os.path.exists(upload_path):
+                    handle_file_replacement(file, filename, upload_path)
+                    flash(f'Archivo {filename} reemplazado con éxito.')
+                else:
+                    handle_new_file_upload(file, filename, upload_path)
+                    flash(f'Archivo {filename} subido con éxito.')
+
+        return redirect(url_for('document.documents'))
 
     folder_tree_data = build_folder_tree(current_app.config['UPLOAD_FOLDER'], session.get('role'))
     return render_template('upload.html', folder_tree_data=folder_tree_data)
+
+
 
 def build_folder_tree(root_folder, role):
     allowed_folders = get_user_folders(role)

@@ -184,174 +184,262 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jstree/dist/themes/default/style.min.css" />
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jstree/dist/jstree.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
-
 <script>
- var selectedNode = null;
- 
+    var selectedNode = null;
 
- $(document).ready(function() {
-    var treeData = {{ files|tojson }};
-    
-    function setNodePaths(nodes, parentPath) {
-        nodes.forEach(function(node) {
-            node.data = node.data || {};
-            node.data.fullPath = parentPath ? parentPath + '/' + node.text : node.text;
-            if (node.children && node.children.length > 0) {
-                setNodePaths(node.children, node.data.fullPath);
+    $(document).ready(function() {
+        var treeData = {{ files|tojson }};
+        console.log(treeData); // Añadir este console.log para verificar los datos
+
+        function getNodePath(node) {
+            var path = node.text;
+            var parent = $("#file-tree").jstree(true).get_parent(node);
+
+            while (parent) {
+                var parentNode = $("#file-tree").jstree(true).get_node(parent);
+                path = parentNode.text + '/' + path;
+                parent = $("#file-tree").jstree(true).get_parent(parentNode);
             }
-        });
-    }
 
-    setNodePaths(treeData, '');
-
-    $('#file-tree').jstree({
-        'core': {
-            'data': treeData,
-            'themes': {
-                'name': 'default',
-                'dots': true,
-                'icons': true
-            },
-            'check_callback': true
-        },
-        'types': {
-            'folder': {
-                'icon': 'static/images/icons/folder.png'
-            },
-            'file': {
-                'icon': function(node) {
-                    return node.icon;
-                }
+            // Eliminar "undefined" al inicio del path, si existe
+            if (path.startsWith("undefined/")) {
+                path = path.substring(10); // Corta los primeros 10 caracteres ("undefined/")
             }
-        },
-        'sort': function(a, b) {
-            var a1 = this.get_node(a);
-            var b1 = this.get_node(b);
 
-            var aIcon = typeof a1.icon === 'string' ? a1.icon : '';
-            var bIcon = typeof b1.icon === 'string' ? b1.icon : '';
-
-            if (aIcon.includes("folder") && !bIcon.includes("folder")) {
-                return -1;
-            }
-            if (!aIcon.includes("folder") && bIcon.includes("folder")) {
-                return 1;
-            }
-            return (a1.text > b1.text) ? 1 : -1;
-        },
-        'plugins': ['types', 'sort', 'state', 'unique', 'contextmenu', 'dnd'],
-        'contextmenu': {
-            'items': function(node) {
-                var tree = $("#file-tree").jstree(true);
-                var items = {
-                    "create": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Crear Carpeta",
-                        "action": function(obj) {
-                            selectedNode = node;
-                            openModal('createFolderModal');
-                            $('#parent-folder').val(node.data.fullPath);
-                        }
-                    },
-                    "rename": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Renombrar",
-                        "action": function(obj) {
-                            selectedNode = node;
-                            openModal('renameModal');
-                            $('#old-path').val(node.data.fullPath);
-                        }
-                    },
-                    "remove": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Eliminar",
-                        "action": function(obj) {
-                            if (confirm("¿Estás seguro de que deseas eliminar este elemento?")) {
-                                var path = node.data.fullPath;
-                                var isFolder = node.type === "folder";
-                                $.post(isFolder ? "{{ url_for('document.delete_folder') }}" : "{{ url_for('document.delete_file') }}", {
-                                    'folder_path': path
-                                }).done(function(response) {
-                                    if (response == 'success') {
-                                        tree.delete_node(node);
-                                    } else {
-                                        alert("Error al eliminar: " + response);
-                                    }
-                                }).fail(function(jqXHR, textStatus, errorThrown) {
-                                    alert("Error al eliminar: " + errorThrown);
-                                });
-                            }
-                        }
-                    }
-                };
-
-                if (node.type === "file") {
-                    delete items.create;
-                }
-
-                return items;
-            }
+            return path;
         }
-    });
 
-    $('#file-tree').on("select_node.jstree", function(e, data) {
-        selectedNode = data.node;
-    });
-
-    $('#file-tree').on("move_node.jstree", function(e, data) {
-        var srcPath = data.node.data.fullPath;
-        var parentNode = $("#file-tree").jstree(true).get_node(data.parent);
-        var dstPath = parentNode ? parentNode.data.fullPath + '/' + data.node.text : data.node.text;
-
-        $.ajax({
-            url: "{{ url_for('document.move') }}",
-            method: "POST",
-            contentType: "application/json",
-            data: JSON.stringify({
-                'src': srcPath,
-                'dst': dstPath
-            }),
-            success: function(response) {
-                if (response !== 'success') {
-                    alert("Error moving node: " + response);
-                } else {
-                    // Update the data.fullPath for the moved node and its children
-                    data.node.data.fullPath = dstPath;
-                    updateChildrenPaths(data.node);
+        treeData.forEach(function(item) {
+            if (item.type === 'folder') {
+                item.icon = 'static/images/icons/folder.png';
+                if (!item.children) {
+                    item.children = [];
                 }
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                alert("Error moving node: " + errorThrown);
+            } else {
+                var ext = item.text.split('.').pop().toLowerCase();
+                var iconsPath = 'static/images/icons/';
+                switch (ext) {
+                    case 'pdf':
+                        item.icon = iconsPath + 'pdf.png';
+                        break;
+                    case 'docx':
+                        item.icon = iconsPath + 'docx.png';
+                        break;
+                    case 'pptx':
+                        item.icon = iconsPath + 'pptx.png';
+                        break;
+                    case 'xlsx':
+                        item.icon = iconsPath + 'xlsx.png';
+                        break;
+                    default:
+                        item.icon = iconsPath + 'file.png';
+                }
             }
         });
-    });
 
-    function updateChildrenPaths(node) {
-        var tree = $("#file-tree").jstree(true);
-        if (node.children && node.children.length > 0) {
-            node.children.forEach(function(childId) {
-                var childNode = tree.get_node(childId);
-                if (childNode) {
-                    childNode.data.fullPath = node.data.fullPath + '/' + childNode.text;
-                    updateChildrenPaths(childNode);
+        function setNodePaths(nodes, parentPath) {
+            nodes.forEach(function(node) {
+                node.data = node.data || {};
+                node.data.fullPath = parentPath ? parentPath + '/' + node.text : node.text;
+                if (node.children && node.children.length > 0) {
+                    setNodePaths(node.children, node.data.fullPath);
                 }
             });
         }
+
+        setNodePaths(treeData, '');
+
+        $('#file-tree').jstree({
+            'core': {
+                'data': treeData,
+                'themes': {
+                    'name': 'default',
+                    'dots': true,
+                    'icons': true
+                },
+                'check_callback': true
+            },
+            'types': {
+                'folder': {
+                    'icon': 'static/images/icons/folder.png'
+                },
+                'file': {
+                    'icon': function(node) {
+                        return node.icon;
+                    }
+                }
+            },
+            'sort': function(a, b) {
+                var a1 = this.get_node(a);
+                var b1 = this.get_node(b);
+
+                var aIcon = typeof a1.icon === 'string' ? a1.icon : '';
+                var bIcon = typeof b1.icon === 'string' ? b1.icon : '';
+
+                if (aIcon.includes("folder") && !bIcon.includes("folder")) {
+                    return -1;
+                }
+                if (!aIcon.includes("folder") && bIcon.includes("folder")) {
+                    return 1;
+                }
+                return (a1.text > b1.text) ? 1 : -1;
+            },
+            'plugins': ['types', 'sort', 'state', 'unique', 'contextmenu', 'dnd'],
+            'contextmenu': {
+                'items': function(node) {
+                    var tree = $("#file-tree").jstree(true);
+                    var items = {
+                        "create": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "Crear Carpeta",
+                            "action": function(obj) {
+                                selectedNode = node;
+                                openModal('createFolderModal');
+                                $('#parent-folder').val(getNodePath(node));
+                            }
+                        },
+                        "rename": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "Renombrar",
+                            "action": function(obj) {
+                                selectedNode = node;
+                                openModal('renameModal');
+                                $('#old-path').val(getNodePath(node));
+                            }
+                        },
+                        "remove": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "Eliminar",
+                            "action": function(obj) {
+                                if (confirm("¿Estás seguro de que deseas eliminar este elemento?")) {
+                                    var path = getNodePath(node);
+                                    var isFolder = node.type === "folder";
+                                    $.post(isFolder ? "{{ url_for('document.delete_folder') }}" : "{{ url_for('document.delete_file') }}", {
+                                        'folder_path': path // Ensure the key name matches the server-side key
+                                    }).done(function(response) {
+                                        if (response == 'success') {
+                                            tree.delete_node(node);
+                                        } else {
+                                            alert("Error al eliminar: " + response);
+                                        }
+                                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                                        console.log("Error: ", textStatus, errorThrown);
+                                        alert("Error al eliminar: " + errorThrown);
+                                    });
+                                }
+                            }
+                        }
+                    };
+
+                    if (node.type === "file") {
+                        delete items.create;
+                    }
+
+                    return items;
+                }
+            }
+        });
+
+        $('#file-tree').on("click", ".jstree-anchor", function(e) {
+            if (e.which === 1) { // Botón izquierdo del ratón
+                var href = $(this).attr("href");
+                if (href) {
+                    window.location.href = href;
+                } else {
+                    console.log("El nodo seleccionado no tiene un atributo href.");
+                }
+            }
+        });
+
+        // Mover nodo
+        $('#file-tree').on("move_node.jstree", function(e, data) {
+            var srcPath = data.node.data.fullPath;
+            var parentNode = $("#file-tree").jstree(true).get_node(data.parent);
+            var dstPath = parentNode ? parentNode.data.fullPath + '/' + data.node.text : data.node.text;
+
+            $.ajax({
+                url: "{{ url_for('document.move') }}",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    'src': srcPath,
+                    'dst': dstPath
+                }),
+                success: function(response) {
+                    if (response !== 'success') {
+                        alert("Error al mover el nodo: " + response);
+                    } else {
+                        data.node.data.fullPath = dstPath;
+                        updateChildrenPaths(data.node);
+                    }
+                    location.reload();
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert("Error al mover el nodo: " + errorThrown);
+                }
+            });
+        });
+
+        function updateChildrenPaths(node) {
+            var tree = $("#file-tree").jstree(true);
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(function(childId) {
+                    var childNode = tree.get_node(childId);
+                    if (childNode) {
+                        childNode.data.fullPath = node.data.fullPath + '/' + childNode.text;
+                        updateChildrenPaths(childNode);
+                    }
+                });
+            }
+        }
+
+        // Crear carpeta
+        window.createFolder = function() {
+            var parent_folder = $('#parent-folder').val();
+            var folder_name = $('#folder-name').val();
+            if (parent_folder === 'undefined') {
+                alert("La carpeta padre no está definida.");
+                return;
+            }
+            $.post("{{ url_for('document.create_folder') }}", {
+                'parent_folder': parent_folder,
+                'folder_name': folder_name
+            }).done(function(response) {
+                if (response == 'success') {
+                    location.reload();
+                } else {
+                    alert("Error al crear la carpeta: " + response);
+                }
+            });
+        };
+
+        // Renombrar nodo
+        window.renameNode = function() {
+            var old_path = $('#old-path').val();
+            var new_name = $('#new-name').val();
+            $.post("{{ url_for('document.rename') }}", {
+                'old_path': old_path,
+                'new_name': new_name
+            }).done(function(response) {
+                if (response == 'success') {
+                    location.reload();
+                } else {
+                    alert("Error al renombrar: " + response);
+                }
+            });
+        };
+    });
+
+    function openModal(modalId) {
+        document.getElementById(modalId).style.display = "block";
     }
-});
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = "block";
-}
 
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = "none";
-}
-
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = "none";
+    }
 </script>
 
 {% endblock %}
-

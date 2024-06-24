@@ -6,6 +6,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def get_backup_db_connection():
     conn = sqlite3.connect('respaldo.db', timeout=30)
     conn.row_factory = sqlite3.Row
@@ -76,3 +77,77 @@ def get_user_folders(role):
     folders = conn.execute('SELECT folders FROM roles WHERE role = ?', (role,)).fetchone()
     conn.close()
     return folders[0].split(',') if folders and folders[0] else []
+def get_usersdb_connection():
+    conn = sqlite3.connect('users.db', timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_recent_activities(username):
+    conn = get_usersdb_connection()
+    activities = conn.execute('SELECT * FROM activities WHERE user = ? ORDER BY date DESC LIMIT 5', 
+                              (username,)).fetchall()
+    conn.close()
+    return activities
+
+def get_recent_documents(username):
+    conn = get_usersdb_connection()
+    documents = conn.execute('SELECT * FROM documents WHERE user = ? ORDER BY upload_date DESC LIMIT 5', 
+                             (username,)).fetchall()
+    conn.close()
+    return documents
+
+def get_notifications(username):
+    conn = get_usersdb_connection()
+    notifications = conn.execute('SELECT * FROM notifications WHERE user = ? ORDER BY date DESC LIMIT 5', 
+                                 (username,)).fetchall()
+    conn.close()
+    return notifications
+
+def get_user_shortcuts(username):
+    conn = get_usersdb_connection()
+    shortcuts = conn.execute('SELECT * FROM shortcuts WHERE user = ? ORDER BY name', 
+                             (username,)).fetchall()
+    conn.close()
+    return shortcuts
+
+def get_user_tasks(username):
+    conn = get_usersdb_connection()
+    tasks = conn.execute('SELECT * FROM tasks WHERE user = ? ORDER BY due_date', 
+                         (username,)).fetchall()
+    conn.close()
+    return tasks
+
+def add_user_task(username, description, due_date):
+    conn = get_usersdb_connection()
+    conn.execute('INSERT INTO tasks (user, description, due_date) VALUES (?, ?, ?)', 
+                 (username, description, due_date))
+    conn.commit()
+    conn.close()
+
+def get_favorite_documents(username):
+    conn = get_usersdb_connection()
+    documents = conn.execute('SELECT * FROM favorite_documents WHERE user = ? ORDER BY filename', 
+                             (username,)).fetchall()
+    conn.close()
+    return documents
+
+def get_shared_documents(username):
+    conn = get_usersdb_connection()
+    documents = conn.execute('SELECT * FROM shared_documents WHERE shared_with = ? ORDER BY filename', 
+                             (username,)).fetchall()
+    conn.close()
+    return documents
+
+def get_user_events(username):
+    conn = get_usersdb_connection()
+    events = conn.execute('SELECT * FROM events WHERE user = ? ORDER BY start_date', 
+                          (username,)).fetchall()
+    conn.close()
+    return events
+
+def submit_feedback(username, feedback):
+    conn = get_usersdb_connection()
+    conn.execute('INSERT INTO feedback (user, feedback, date) VALUES (?, ?, ?)', 
+                 (username, feedback, datetime.now()))
+    conn.commit()
+    conn.close()
