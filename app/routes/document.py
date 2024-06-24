@@ -12,7 +12,7 @@ import sqlite3
 
 bp = Blueprint('document', __name__)
 
-ALLOWED_EXTENSIONS = {'pptx', 'docx', 'pdf', 'xlsx'}
+
 
 def create_backup(is_individual=False, file_path=None):
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
