@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, current_app
 from ..models import get_recent_documents, get_notifications, get_user_tasks, get_favorite_documents, get_shared_documents, add_user_task, get_user_events, submit_feedback
 from datetime import datetime
+import os
+from config import Config
 bp = Blueprint('dashboard', __name__)
-
+from werkzeug.utils import secure_filename
 @bp.route('/dashboard')
 def dashboard():
     if not session.get('logged_in'):
@@ -38,12 +40,23 @@ def add_task():
     return redirect(url_for('dashboard.dashboard'))
 
 
-@bp.route('/submit_feedback', methods=['POST'])
-def submit_feedback():
+
+@bp.route('/submits_feedback', methods=['POST'])
+def submits_feedback():
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
 
     feedback = request.form['feedback']
-    submit_feedback(session['username'], feedback)
+    capture = request.files.get('capture')
+
+    if capture and capture.filename != '':
+        filename = secure_filename(capture.filename)
+        capture_path = os.path.join(current_app.config['CAPTURES_FOLDER'], filename)
+        capture.save(capture_path)
+    else:
+        filename = None
+
+    submit_feedback(session['username'], feedback, filename)
     flash('Gracias por tu retroalimentación.')
     return redirect(url_for('dashboard.dashboard'))
+

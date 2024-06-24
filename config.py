@@ -8,4 +8,5 @@ class Config:
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
     BACKUP_FOLDER = os.path.join(os.getcwd(), 'backups')
     TEMP_FOLDER = os.path.join(os.getcwd(), 'temp')
+    CAPTURES_FOLDER = os.path.join(os.getcwd(), 'captures')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB

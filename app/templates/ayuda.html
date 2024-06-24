@@ -7,7 +7,7 @@
         background-color: #ffffff;
     }
 
-    .help-section, .feedback-section {
+    .help-section, .feedback-section, .admin-section {
         width: 95%;
         margin: 0 auto 20px auto; /* Centra las secciones horizontalmente */
         padding: 20px;
@@ -16,7 +16,7 @@
         border-radius: 10px;
     }
 
-    .help-section h2 {
+    .help-section h2, .feedback-section h2, .admin-section h2 {
         color: #D10A11;
     }
 
@@ -44,6 +44,22 @@
 
     .submit-button:hover {
         background-color: #a00;
+    }
+
+    .admin-section table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .admin-section th, .admin-section td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .admin-section th {
+        background-color: #f2f2f2;
+        color: #333;
     }
 </style>
 
@@ -74,9 +90,44 @@
 
 <div class="feedback-section">
     <h2>Comentarios y Retroalimentación</h2>
-    <form method="post" action="{{ url_for('ayuda.submit_feedback') }}">
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('ayuda.submits_feedback') }}">
         <textarea name="feedback" placeholder="Escribe tus comentarios aquí..." style="font-family: 'Raleway', sans-serif; width: 100%; height: 100px;" required></textarea>
+        <label for="capture" class="form-label">Subir una captura (opcional):</label>
+        <input type="file" name="capture" id="capture" class="form-control" accept="image/*">
         <button type="submit" class="submit-button">Enviar</button>
     </form>
 </div>
+
+{% if session.get('role') == 'admin' %}
+<div class="admin-section">
+    <h2>Feedback Recibido</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Comentarios</th>
+                <th>Fecha</th>
+                <th>Captura</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in feedback_entries %}
+            <tr>
+                <td>{{ entry.user }}</td>
+                <td>{{ entry.feedback }}</td>
+                <td>{{ entry.date }}</td>
+                <td>
+                    {% if entry.capture %}
+                    <a href="{{ url_for('ayuda.get_capture', filename=entry.capture) }}" target="_blank">Ver Captura</a>
+                    {% else %}
+                    No disponible
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 {% endblock %}

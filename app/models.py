@@ -168,9 +168,15 @@ def get_user_events(username):
     conn.close()
     return events
 
-def submit_feedback(username, feedback):
+def submit_feedback(username, feedback, capture_filename):
     conn = get_usersdb_connection()
-    conn.execute('INSERT INTO feedback (user, feedback, date) VALUES (?, ?, ?)', 
-                 (username, feedback, datetime.now()))
+    conn.execute('INSERT INTO feedback (user, feedback, date, capture) VALUES (?, ?, ?, ?)', 
+                 (username, feedback, datetime.now(), capture_filename))
     conn.commit()
     conn.close()
+
+def get_feedback():
+    conn = get_usersdb_connection()
+    feedback_entries = conn.execute('SELECT user, feedback, date, capture FROM feedback ORDER BY date DESC').fetchall()
+    conn.close()
+    return feedback_entries

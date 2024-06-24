@@ -124,12 +124,15 @@
     </div>
 
     <div class="card">
-        <h2>Comentarios y Retroalimentación</h2>
-        <form method="post" action="{{ url_for('dashboard.submit_feedback') }}"> 
-            <textarea name="feedback" placeholder="Escribe tus comentarios aquí..."  style=" font-family: 'Raleway', sans-serif; width: 100%; height: fit-content;" ></textarea>
-            <button type="submit" class="submit-button">Enviar</button>
-        </form>
-    </div>
+       
+            <h2>Comentarios y Retroalimentación</h2>
+            <form method="post" enctype="multipart/form-data" action="{{ url_for('ayuda.submits_feedback') }}">
+                <textarea name="feedback" placeholder="Escribe tus comentarios aquí..." style="font-family: 'Raleway', sans-serif; width: 100%; height: 100px;" required></textarea>
+                <label for="capture" class="form-label">Subir una captura (opcional):</label>
+                <input type="file" name="capture" id="capture" class="form-control" accept="image/*">
+                <button type="submit" class="submit-button">Enviar</button>
+            </form>
+       
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
