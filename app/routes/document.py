@@ -158,12 +158,12 @@ def handle_file_replacement(file, filename, upload_path):
             if previous_entry:
                 previous_version = float(previous_entry['version'])
                 new_version = previous_version + 0.1
-                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
-                             (previous_entry['fecha_subida'], filename, previous_entry['autor'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], f'{new_version:.1f}'))
+                conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?,?, ?, ?, ?)',
+                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Reemplazó', filename, session['username'], f'{new_version:.1f}'))
                 
             else:
-                conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, fecha_edicion, usuario, version) VALUES (?, ?, ?, ?, ?, ?)',
-                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), filename, session['username'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['username'], '1.0'))
+                conn.execute('INSERT INTO auditoria (fecha_subida,accion, documento, autor, version) VALUES (?,?, ?, ?, ?)',
+                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'Subió', filename, session['username'], '1.0'))
             conn.commit()
             conn.close()
             break
@@ -179,8 +179,8 @@ def handle_new_file_upload(file, filename, upload_path):
     for attempt in range(5):
         try:
             conn = get_db_connection()
-            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, version) VALUES (?, ?, ?, ?)',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), filename, session['username'], '1.0'))
+            conn.execute('INSERT INTO auditoria (fecha_subida,accion, documento, autor, version) VALUES (?,?, ?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'Subió', filename, session['username'], '1.0'))
             conn.commit()
             conn.close()
             break
@@ -194,22 +194,26 @@ def handle_new_file_upload(file, filename, upload_path):
 def view_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
+    
     if request.method == 'POST':
         if 'file' not in request.files or 'original-filename' not in request.form:
             flash('Archivo no seleccionado o nombre de archivo original no encontrado.')
             return redirect(request.url)
+        
         file = request.files['file']
-        original_filename = request.form['original-filename'].split("\\")[-1]  # Extraer solo el nombre del archivo
+        original_filename = request.form['original-filename']
+        
         if file.filename == '' or file.filename != original_filename:
             flash('El archivo seleccionado no coincide con el archivo original.')
             return redirect(request.url)
+        
         if file and allowed_file(file.filename):
             upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             if os.path.exists(upload_path):
                 handle_file_replacement(file, filename, upload_path)
                 flash(f'Archivo {original_filename} reemplazado con éxito.')
             else:
-                flash('El archivo no existe para ser reemplazado')
+                flash('El archivo no existe para ser reemplazado.')
             return redirect(url_for('document.view_file', filename=filename))
     
     file_url = url_for('document.uploaded_file', filename=filename, _external=True)
@@ -274,8 +278,8 @@ def create_folder():
 
         # Registro en la tabla de auditoría
         conn = get_db_connection()
-        conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
-                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Creó Carpeta {new_folder_path}', session['username']))
+        conn.execute('INSERT INTO auditoria (fecha_subida,accion, documento, autor,version) VALUES (?,?, ?, ?,?)',
+                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'Creó Carpeta', f' {new_folder_path}', session['username'],'1.0'))
         conn.commit()
         conn.close()
         print("Audit record inserted")
@@ -294,7 +298,7 @@ def delete_folder():
         print('Folder path is missing.')
         return 'error: missing folder_path', 400
 
-    full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], folder_path)
+    full_path = os.path.normpath(os.path.join(current_app.config['UPLOAD_FOLDER'], folder_path))
 
     try:
         if os.path.exists(full_path) and os.path.isdir(full_path):
@@ -303,8 +307,8 @@ def delete_folder():
 
             # Registro en la tabla de auditoría
             conn = get_db_connection()
-            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Carpeta {full_path}', session['username']))
+            conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?, ?, ?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Eliminó Carpeta', full_path, session['username'], '1.0'))
             conn.commit()
             conn.close()
             print("Audit record inserted")
@@ -315,6 +319,7 @@ def delete_folder():
     except Exception as e:
         print(f'Error deleting folder: {str(e)}')
         return f'error: {str(e)}', 400
+    return f'error: {str(e)}', 400
 
 @bp.route('/delete_file', methods=['POST'])
 def delete_file():
@@ -338,8 +343,8 @@ def delete_file():
             conn = get_db_connection()
             previous_entry = conn.execute('SELECT version FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (filename,)).fetchone()
             previous_version = float(previous_entry['version']) if previous_entry else 1.0
-            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, usuario, version) VALUES (?, ?, ?, ?, ?)',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Eliminó Archivo {file_path}', session['username'], session['username'], previous_version))
+            conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?, ?, ?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Eliminó', f'  {file_path}', session['username'], previous_version))
             conn.commit()
             conn.close()
             print("Audit record inserted")
@@ -359,8 +364,8 @@ def rename():
 
     old_path = request.form['old_path']
     new_name = request.form['new_name']
-    full_old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_path)
-    new_path = os.path.join(os.path.dirname(full_old_path), new_name)
+    full_old_path = os.path.normpath(os.path.join(current_app.config['UPLOAD_FOLDER'], old_path))
+    new_path = os.path.normpath(os.path.join(os.path.dirname(full_old_path), new_name))
 
     print(f"Old path: {old_path}")
     print(f"New name: {new_name}")
@@ -369,13 +374,21 @@ def rename():
 
     try:
         if os.path.exists(full_old_path):
+            # Obtener la versión del archivo antes de renombrar
+            conn = get_db_connection()
+            previous_entry = conn.execute('SELECT version FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (old_path,)).fetchone()
+            if previous_entry:
+                previous_version = float(previous_entry['version'])
+                new_version = previous_version + 0.1
+            else:
+                new_version = 1.0
+            
             os.rename(full_old_path, new_path)
             print(f"Renamed {full_old_path} to {new_path}")
 
             # Registro en la tabla de auditoría
-            conn = get_db_connection()
-            conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
-                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Renombró {old_path} a {new_name}', session['username']))
+            conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?, ?, ?, ?, ?)',
+                         (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Renombró', f'{old_path} a {new_name}', session['username'], f'{new_version:.1f}'))
             conn.commit()
             conn.close()
             print("Audit record inserted")
@@ -386,6 +399,7 @@ def rename():
     except Exception as e:
         print(f"Error renaming: {str(e)}")
         return f'error: {str(e)}', 400
+
 @bp.route('/move', methods=['POST'])
 def move():
     if not session.get('logged_in') or session.get('role') != 'admin':
@@ -430,10 +444,18 @@ def move():
         shutil.move(temp_path, dst_path)
         print("Move successful.")
 
-        # Registro en la tabla de auditoría
+        # Obtener la versión del archivo antes de mover
         conn = get_db_connection()
-        conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor) VALUES (?, ?, ?)',
-                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Movió {src} a {dst}', session['username']))
+        previous_entry = conn.execute('SELECT version FROM auditoria WHERE documento = ? ORDER BY id DESC LIMIT 1', (src,)).fetchone()
+        if previous_entry:
+            previous_version = float(previous_entry['version'])
+            new_version = previous_version + 0.1
+        else:
+            new_version = 1.0
+
+        # Registro en la tabla de auditoría
+        conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?, ?, ?, ?, ?)',
+                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Movió', f'{src} a {dst}', session['username'], f'{new_version:.1f}'))
         conn.commit()
         conn.close()
         print("Audit record inserted")

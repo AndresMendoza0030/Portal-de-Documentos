@@ -4,7 +4,7 @@ import shutil
 import zipfile
 from flask import Blueprint, render_template, redirect, url_for, request, session, send_from_directory, flash, current_app
 from datetime import datetime
-from ..models import get_backup_db_connection
+from ..models import get_backup_db_connection, get_db_connection
 
 bp = Blueprint('backup', __name__)
 
@@ -59,7 +59,7 @@ def download_backup(filename):
     
     backup_folder = current_app.config['BACKUP_FOLDER']
     backup_path = os.path.join(backup_folder, filename)
-     # Impresiones para depuración
+    # Impresiones para depuración
     print(f"Folder: {backup_folder}")
     print(f"Filename: {filename}")
     print(f"Backup Path: {backup_path}")
@@ -95,3 +95,31 @@ def respaldo():
     per_page = 10
     backups, total = get_backup_history(page, per_page)
     return render_template('respaldo.html', backups=backups, total=total, page=page, per_page=per_page)
+
+@bp.route('/respaldo/delete/<filename>', methods=['POST'])
+def delete_backup(filename):
+    if not session.get('logged_in'):
+        return redirect(url_for('auth.login'))
+
+    backup_folder = current_app.config['BACKUP_FOLDER']
+    backup_path = os.path.join(backup_folder, filename)
+    
+    if os.path.exists(backup_path):
+        os.remove(backup_path)
+        
+        # Eliminar el registro de la base de datos
+        conn = get_backup_db_connection()
+        conn.execute('DELETE FROM respaldos WHERE archivo = ?', (filename,))
+        conn.commit()
+        
+        # Registrar la acción en la auditoría
+        conn.execute('INSERT INTO auditoria (fecha_subida, documento, autor, version) VALUES (?, ?, ?, ?)',
+                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), filename, session['username'], 'delete'))
+        conn.commit()
+        conn.close()
+        
+        flash(f'El archivo {filename} ha sido eliminado.')
+    else:
+        flash(f'El archivo {filename} no existe.')
+
+    return redirect(url_for('backup.respaldo'))

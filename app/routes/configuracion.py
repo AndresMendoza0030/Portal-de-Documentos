@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, current_app
 import sqlite3
 from flask_paginate import Pagination, get_page_parameter
 import os
+from datetime import datetime
+
 bp = Blueprint('configuracion', __name__)
 
 def get_users(offset=0, per_page=10):
@@ -66,6 +68,23 @@ def update_backup_frequency(new_frequency):
     conn.commit()
     conn.close()
 
+def delete_auditoria(start_date, end_date):
+    conn = sqlite3.connect('auditoria.db')
+    conn.execute('DELETE FROM auditoria WHERE fecha_subida BETWEEN ? AND ?', (start_date, end_date))
+    conn.commit()
+    conn.close()
+
+def delete_respaldo(start_date, end_date):
+    conn = sqlite3.connect('respaldo.db')
+    backups = conn.execute('SELECT archivo FROM respaldos WHERE fecha BETWEEN ? AND ?', (start_date, end_date)).fetchall()
+    for backup in backups:
+        backup_path = os.path.join(current_app.config['BACKUP_FOLDER'], backup[0])
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+    conn.execute('DELETE FROM respaldos WHERE fecha BETWEEN ? AND ?', (start_date, end_date))
+    conn.commit()
+    conn.close()
+
 @bp.route('/configuracion', methods=['GET', 'POST'])
 def configuracion():
     if not session.get('logged_in') or session.get('role') != 'admin':
@@ -83,6 +102,16 @@ def configuracion():
             frecuencia = request.form['frecuencia']
             update_backup_frequency(frecuencia)
             flash(f'Frecuencia de respaldo actualizada a {frecuencia} días.')
+        elif 'delete_auditoria' in request.form:
+            start_date = request.form['start_date']
+            end_date = request.form['end_date']
+            delete_auditoria(start_date, end_date)
+            flash(f'Registros de auditoría eliminados del {start_date} al {end_date}.')
+        elif 'delete_respaldo' in request.form:
+            start_date = request.form['start_date']
+            end_date = request.form['end_date']
+            delete_respaldo(start_date, end_date)
+            flash(f'Registros de respaldo eliminados del {start_date} al {end_date}.')
         return redirect(url_for('configuracion.configuracion'))
 
     page = request.args.get(get_page_parameter(), type=int, default=1)

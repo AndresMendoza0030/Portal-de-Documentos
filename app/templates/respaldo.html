@@ -2,6 +2,8 @@
 
 {% block content %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Material+Icons');
+
     body {
         font-family: 'Raleway', sans-serif;
         background-color: #f4f4f4';
@@ -50,7 +52,7 @@
         background-color: #f2f2f2;
     }
 
-    .backup-button, .download-all-button {
+    .backup-button, .download-all-button, .delete-button {
         margin-top: 20px;
         padding: 10px 20px;
         background-color: #D10A11;
@@ -60,9 +62,10 @@
         cursor: pointer;
         text-decoration: none;
         font-family: 'Raleway', sans-serif;
+        font-size: large;
     }
 
-    .backup-button:hover, .download-all-button:hover {
+    .backup-button:hover, .download-all-button:hover, .delete-button:hover {
         background-color: #a00;
     }
 
@@ -91,7 +94,32 @@
         color: #fff;
         pointer-events: none;
     }
+
+    .icon-button {
+        margin-top: 20px;
+        padding: 5px 10px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: 'Raleway', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-button:hover {
+        color: #a00;
+    }
 </style>
+
+<script>
+    function confirmDelete(filename) {
+        return confirm('¿Está seguro de que desea eliminar el respaldo ' + filename + '?');
+    }
+</script>
 
 <div class="backup-container">
     <div class="backup-header">
@@ -121,7 +149,22 @@
                     <td>{{ backup.autor }}</td>
                     <td>{{ backup.version }}</td>
                     <td>
-                        <a href="{{ url_for('backup.download_backup', filename=backup.archivo) }}" class="backup-button">Descargar</a>
+                        <table>
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('backup.download_backup', filename=backup.archivo) }}" class="icon-button">
+                                        <i class="material-icons">download</i>
+                                    </a>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('backup.delete_backup', filename=backup.archivo) }}" style="display:inline;" onsubmit="return confirmDelete('{{ backup.archivo }}')">
+                                        <button type="submit" class="icon-button">
+                                            <i class="material-icons">delete</i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
                 {% endfor %}

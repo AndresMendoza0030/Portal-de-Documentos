@@ -1,101 +1,44 @@
 import sqlite3
-from datetime import datetime
 
-def create_tables():
-    conn = sqlite3.connect('users.db')
+def get_db_connection():
+    conn = sqlite3.connect('auditoria.db', timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def alter_auditoria_table():
+    conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Crear tabla de actividades recientes
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS activities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            description TEXT NOT NULL,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    # Add the new column 'accion' with a default value
+    cursor.execute('ALTER TABLE auditoria ADD COLUMN accion TEXT DEFAULT "unknown"')
     
-    # Crear tabla de documentos
+    # Create a new table with the updated schema
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS documents (
+        CREATE TABLE IF NOT EXISTS auditoria_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            upload_date DATETIME DEFAULT CURRENT_TIMESTAMP
+            fecha_subida TEXT NOT NULL,
+            accion TEXT NOT NULL,
+            documento TEXT NOT NULL,
+            autor TEXT NOT NULL,
+            version TEXT NOT NULL
         )
     ''')
-    
-    # Crear tabla de notificaciones
+
+    # Copy the data from the old table to the new table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            message TEXT NOT NULL,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
+        INSERT INTO auditoria_new (id, fecha_subida, accion, documento, autor, version)
+        SELECT id, fecha_subida, accion, documento, autor, version
+        FROM auditoria
     ''')
-    
-    # Crear tabla de atajos personalizados
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS shortcuts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            name TEXT NOT NULL,
-            url TEXT NOT NULL
-        )
-    ''')
-    
-    # Crear tabla de tareas
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            description TEXT NOT NULL,
-            due_date DATE
-        )
-    ''')
-    
-    # Crear tabla de documentos favoritos
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS favorite_documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            filename TEXT NOT NULL
-        )
-    ''')
-    
-    # Crear tabla de documentos compartidos
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS shared_documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT NOT NULL,
-            shared_by TEXT NOT NULL,
-            shared_with TEXT NOT NULL
-        )
-    ''')
-    
-    # Crear tabla de eventos de usuario
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            title TEXT NOT NULL,
-            start_date DATETIME,
-            end_date DATETIME
-        )
-    ''')
-    
-    # Crear tabla de retroalimentación
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
-            feedback TEXT NOT NULL,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+
+    # Drop the old table
+    cursor.execute('DROP TABLE auditoria')
+
+    # Rename the new table to the old table name
+    cursor.execute('ALTER TABLE auditoria_new RENAME TO auditoria')
 
     conn.commit()
     conn.close()
-create_tables()
+alter_auditoria_table()
+
 
