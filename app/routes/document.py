@@ -388,6 +388,13 @@ def rename():
     old_path = request.form['old_path']
     new_name = request.form['new_name']
     full_old_path = os.path.normpath(os.path.join(current_app.config['UPLOAD_FOLDER'], old_path))
+
+    # Extracting and preserving the file extension
+    file_extension = os.path.splitext(full_old_path)[1]
+    if not file_extension:  # If there is no file extension in the old file
+        file_extension = ''
+    new_name += file_extension if file_extension else ''
+
     new_path = os.path.normpath(os.path.join(os.path.dirname(full_old_path), new_name))
 
     print(f"Old path: {old_path}")
