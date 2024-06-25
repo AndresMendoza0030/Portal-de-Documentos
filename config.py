@@ -10,3 +10,4 @@ class Config:
     TEMP_FOLDER = os.path.join(os.getcwd(), 'temp')
     CAPTURES_FOLDER = os.path.join(os.getcwd(), 'captures')
     MAX_CONTENT_LENGTH = 160 * 1024 * 1024  # 16 MB
+    PREFERRED_URL_SCHEME = 'https'

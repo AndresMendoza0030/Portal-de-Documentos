@@ -102,7 +102,7 @@
         <p><strong>Archivo:</strong> {{ filename }}</p>
         {% if filename.endswith('.pdf') %}
             <embed src="{{ file_url }}" type="application/pdf" width="100%" height="600px" />
-            <div class="file-url">PDF file URL: {{ file_url }}</div>
+           
         {% else %}
             <p><a href="{{ url_for('document.download_document', filename=filename) }}">Descargar Documento</a></p>
         {% endif %}

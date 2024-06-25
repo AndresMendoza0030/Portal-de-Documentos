@@ -195,19 +195,19 @@ def handle_new_file_upload(file, filename, upload_path):
 def view_file(filename):
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
-    
+
     if request.method == 'POST':
         if 'file' not in request.files or 'original-filename' not in request.form:
             flash('Archivo no seleccionado o nombre de archivo original no encontrado.')
             return redirect(request.url)
-        
+
         file = request.files['file']
         original_filename = request.form['original-filename']
-        
+
         if file.filename == '' or file.filename != original_filename:
             flash('El archivo seleccionado no coincide con el archivo original.')
             return redirect(request.url)
-        
+
         if file and allowed_file(file.filename):
             upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             if os.path.exists(upload_path):
@@ -216,9 +216,9 @@ def view_file(filename):
             else:
                 flash('El archivo no existe para ser reemplazado.')
             return redirect(url_for('document.view_file', filename=filename))
-    
+
     # Obtener la URL del archivo
-    file_url = url_for('document.uploaded_file', filename=filename, _external=True)
+    file_url = url_for('document.uploaded_file', filename=filename, _external=True, _scheme='https')
 
     # Impresión a consola para depuración
     print(f"File URL: {file_url}")
@@ -229,17 +229,17 @@ def view_file(filename):
 
          # Verificar el número de documentos del usuario
          user_docs = conn.execute('SELECT id FROM documents WHERE user = ? ORDER BY id', (session['username'],)).fetchall()
-    
+
          if len(user_docs) >= 5:
             oldest_doc_id = user_docs[0]['id']
             conn.execute('UPDATE documents SET filename = ? WHERE id = ?', (filename, oldest_doc_id))
          else:
         # Insertar un nuevo documento
             conn.execute('INSERT INTO documents (user, filename) VALUES (?, ?)', (session['username'], filename))
-    
+
          conn.commit()
          conn.close()
-        
+
     except sqlite3.OperationalError as e:
         print(f"Error inserting document access record: {e}")
 
