@@ -56,10 +56,11 @@
 
     .download-buttons {
         display: flex;
-        justify-content: space-between;
-        width: 100%;
-        max-width: 200px;
-        gap: 20px;
+        
+        justify-content: center; /* Cambiado para centrar los botones */
+        margin-top: 20px; /* Añadir margen superior para separación */
+        gap: 20px; /* Espacio entre los botones */
+        
     }
 
     .download-button {
@@ -104,7 +105,7 @@
     }
 
     .filter-button, .search-button {
-        padding: 10px 20px;
+        padding: 10px 30px;
         background-color: #D10A11;
         color: #fff;
         border: none;
@@ -123,6 +124,7 @@
         cursor: pointer;
         margin-left: 10px;
         font-weight: bold;
+        text-align: center;
     }
 
     .filter-button:hover, .search-button:hover {
@@ -170,7 +172,7 @@
         <label for="start_date" style="margin-left: 32px;">Fecha de Inicio:</label>
         <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal; text-align: center; width: 152px;">
         <label for="end_date" style="margin-left: 50px;">Fecha de Fin:</label>
-        <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal; text-align: center;">
+        <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal; text-align: center; width: 152px;">
         <div class="dropdown">
             <button type="button" class="d-button dropbtn">
                 
@@ -219,7 +221,8 @@
             </tr>
             {% endfor %}
         </table>
-        <div class="download-buttons">
+      
+        <div class="download-buttons" style="text-align: center;">
             <a href="#" class="download-button" onclick="showModal('pdf')">Descargar PDF</a>
             <a href="#" class="download-button" onclick="showModal('excel')">Descargar Excel</a>
         </div>
