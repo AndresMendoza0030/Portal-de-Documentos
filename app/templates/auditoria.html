@@ -1,3 +1,5 @@
+ <!-- auditoria.html -->
+
 {% extends 'base.html' %}
 
 {% block content %}
@@ -109,6 +111,18 @@
         border-radius: 5px;
         cursor: pointer;
         margin-left: 10px;
+        font-weight: bold;
+    }
+    
+    .d-button {
+        padding: 10px 20px;
+        background-color: #333333;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-left: 10px;
+        font-weight: bold;
     }
 
     .filter-button:hover, .search-button:hover {
@@ -140,41 +154,50 @@
     }
 
     .dropdown:hover .dropbtn {
-        background-color: #3e8e41;
+        background-color: #444444;
     }
+    .d-button svg {
+  margin-left: 1px; /* Espacio entre el texto y el ícono */
+  vertical-align: middle; /* Asegura que el ícono esté alineado con el texto */
+}
 </style>
-
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <div class="audit-container">
     <div class="audit-header" style="margin-bottom: 20px;">
         <h1>Historial de Auditoría</h1>
     </div>
     <form method="get" action="{{ url_for('audit.auditoria') }}" style="font-family: 'Raleway', sans-serif; font-weight:600;">
-        <label for="start_date">Fecha de Inicio:</label>
-        <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal;">
-        <label for="end_date" style="margin-left: 10px;">Fecha de Fin:</label>
-        <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal;">
+        <label for="start_date" style="margin-left: 32px;">Fecha de Inicio:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ request.args.get('start_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal; text-align: center; width: 152px;">
+        <label for="end_date" style="margin-left: 50px;">Fecha de Fin:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ request.args.get('end_date', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal; text-align: center;">
         <div class="dropdown">
-            <button type="button" class="filter-button dropbtn">Acciones</button>
+            <button type="button" class="d-button dropbtn">
+                
+                Acciones
+                <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="#e8eaed">
+                    <path d="M480-360 280-560h400L480-360Z"/>
+                  </svg>
+              </button>
             <div class="dropdown-content">
-                <label><input type="checkbox" name="acciones" value="Subió" {% if 'Subió  ' in request.args.getlist('acciones') %}checked{% endif %}> Subió</label>
+                <label><input type="checkbox" name="acciones" value="Subió" {% if 'Subió' in request.args.getlist('acciones') %}checked{% endif %}> Subió</label>
                 <label><input type="checkbox" name="acciones" value="Eliminó" {% if 'Eliminó' in request.args.getlist('acciones') %}checked{% endif %}> Eliminó</label>
                 <label><input type="checkbox" name="acciones" value="Eliminó Carpeta" {% if 'Eliminó Carpeta' in request.args.getlist('acciones') %}checked{% endif %}> Eliminó Carpeta</label>
                 <label><input type="checkbox" name="acciones" value="Creó Carpeta" {% if 'Creó Carpeta' in request.args.getlist('acciones') %}checked{% endif %}> Creó Carpeta</label>
                 <label><input type="checkbox" name="acciones" value="Movió" {% if 'Movió' in request.args.getlist('acciones') %}checked{% endif %}> Movió</label>
                 <label><input type="checkbox" name="acciones" value="Reemplazó" {% if 'Reemplazó' in request.args.getlist('acciones') %}checked{% endif %}> Reemplazó</label>
-                
             </div>
         </div>
         <button type="submit" class="filter-button">Filtrar</button>
         <div style="margin-bottom: 10px;">
-            <label for="search_document">Buscar por archivo:</label>
+            <label for="search_document">Nombre de Archivo:</label>
             <input type="text" id="search_document" name="search_document" value="{{ request.args.get('search_document', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal;">
-            <button type="submit" class="search-button">Buscar</button>
+           
         </div>
         <div>
-            <label for="search_user">Buscar por usuario:</label>
+            <label for="search_user">Nombre de Usuario:</label>
             <input type="text" id="search_user" name="search_user" value="{{ request.args.get('search_user', '') }}" style="font-family: 'Raleway', sans-serif; font-weight: normal;">
-            <button type="submit" class="search-button">Buscar</button>
+           
         </div>
     </form>
     <div class="audit-table">
@@ -214,7 +237,7 @@
         <span class="close" onclick="closeModal()">&times;</span>
         <h2>Descargar Auditoría</h2>
         <form id="downloadForm" method="get">
-            <label for="filename" class="form-label" style="font-size: large;  font-family: 'Raleway', sans-serif; font-weight: bold;">Nombre del archivo:</label>
+            <label for="filename" class="form-label" style="font-size: large;  font-family: 'Raleway', sans-serif; font-weight: bold;">Nombre del Archivo:</label>
             <input type="text" id="filename" name="filename" class="form-control" style="font-size: large; font-family: 'Raleway', sans-serif; width: 100%; margin-top: 10px;" required>
 
             <input type="hidden" id="filetype" name="filetype">
@@ -237,13 +260,16 @@
         const endDate = '{{ request.args.get('end_date', 'None') }}';
 
         // Formar nombre predeterminado del archivo
-        let filename = 'Auditoria';
-        if (startDate !== 'None' && endDate !== 'None') {
-            filename += ` ${startDate} a ${endDate}`;
-        } else {
-            const now = new Date();
-            filename += ` ${now.toISOString().slice(0, 19).replace('T', ' ')}`;
-        }
+ 
+    let filename = 'Auditoria';
+    if (startDate !== 'None' && endDate !== 'None') {
+        filename += ` ${formatDate(startDate)} a ${formatDate(endDate)}`;
+    } else {
+        const now = new Date();
+        const date = formatDate(now.toISOString().slice(0, 10)); // Obtener solo la fecha en formato YYYY-MM-DD y luego formatear
+        filename += ` ${date}`;
+    }
+
 
         // Asignar nombre predeterminado al campo de entrada
         document.getElementById('filename').value = filename;
@@ -263,7 +289,7 @@
         
         if (filetype === 'pdf' && !filename.endsWith('.pdf')) {
             filename += '.pdf';
-        } else if (filetype === 'excel' && !filename.endswith('.xlsx')) {
+        } else if (filetype === 'excel' && !filename.endsWith('.xlsx')) {
             filename += '.xlsx';
         }
 
@@ -275,6 +301,10 @@
         }
         window.location.href = url;
     }
+    function formatDate(dateString) {
+    const [year, month, day] = dateString.split('-');
+    return `${day}-${month}-${year}`;
+}
 </script>
 
 <style>

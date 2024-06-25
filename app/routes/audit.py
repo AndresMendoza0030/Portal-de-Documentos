@@ -5,6 +5,7 @@ import pandas as pd
 from fpdf import FPDF
 import os
 
+
 bp = Blueprint('audit', __name__)
 
 def get_auditoria_history(page, per_page, start_date=None, end_date=None, acciones=None, search_document=None, search_user=None):
@@ -91,7 +92,6 @@ class PDF(FPDF):
             self.cell(col_widths[3], 10, registro['autor'], 1)
             self.cell(col_widths[4], 10, str(registro['version']), 1)
             self.ln()
-
 @bp.route('/auditoria/export/pdf')
 def export_auditoria_pdf():
     if not session.get('logged_in'):
@@ -99,16 +99,34 @@ def export_auditoria_pdf():
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    acciones = request.args.getlist('acciones')
+    acciones = request.args.get('acciones')
     search_document = request.args.get('search_document')
     search_user = request.args.get('search_user')
     filename_pdf = request.args.get('filename_pdf', 'auditoria.pdf')
+
+    # Normalizar parámetros
+    if start_date in [None, 'None', '']:
+        start_date = None
+    if end_date in [None, 'None', '']:
+        end_date = None
+    if not acciones or acciones in ['None', '[]', '']:
+        acciones = []
+    else:
+        acciones = acciones.strip('[]').split(',')
+
+    if search_document in [None, 'None', '']:
+        search_document = None
+    if search_user in [None, 'None', '']:
+        search_user = None
+
+    # Debugging: Print normalized parameters
+    print(f"start_date: {start_date}, end_date: {end_date}, acciones: {acciones}, search_document: {search_document}, search_user: {search_user}")
 
     conn = get_db_connection()
     query = 'SELECT fecha_subida, accion, documento, autor, version FROM auditoria WHERE 1=1'
     params = []
 
-    if start_date and end_date and start_date != 'None' and end_date != 'None':
+    if start_date and end_date:
         query += ' AND fecha_subida BETWEEN ? AND ?'
         params.extend([start_date, end_date])
     if acciones:
@@ -123,8 +141,16 @@ def export_auditoria_pdf():
 
     query += ' ORDER BY fecha_subida DESC'
 
+    # Debugging: Print the final query and params
+    print(f"Query: {query}")
+    print(f"Params: {params}")
+
     registros = conn.execute(query, params).fetchall()
     conn.close()
+
+    if not registros:
+        flash('No se encontraron registros para exportar.')
+        return redirect(url_for('audit.auditoria'))
 
     pdf = PDF('L', 'mm', 'A4')
     pdf.add_page()
@@ -141,16 +167,34 @@ def export_auditoria_excel():
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    acciones = request.args.getlist('acciones')
+    acciones = request.args.get('acciones')
     search_document = request.args.get('search_document')
     search_user = request.args.get('search_user')
     filename_excel = request.args.get('filename_excel', 'auditoria.xlsx')
+
+    # Normalizar parámetros
+    if start_date in [None, 'None', '']:
+        start_date = None
+    if end_date in [None, 'None', '']:
+        end_date = None
+    if not acciones or acciones in ['None', '[]', '']:
+        acciones = []
+    else:
+        acciones = acciones.strip('[]').split(',')
+
+    if search_document in [None, 'None', '']:
+        search_document = None
+    if search_user in [None, 'None', '']:
+        search_user = None
+
+    # Debugging: Print normalized parameters
+    print(f"start_date: {start_date}, end_date: {end_date}, acciones: {acciones}, search_document: {search_document}, search_user: {search_user}")
 
     conn = get_db_connection()
     query = 'SELECT fecha_subida, accion, documento, autor, version FROM auditoria WHERE 1=1'
     params = []
 
-    if start_date and end_date and start_date != 'None' and end_date != 'None':
+    if start_date and end_date:
         query += ' AND fecha_subida BETWEEN ? AND ?'
         params.extend([start_date, end_date])
     if acciones:
@@ -165,8 +209,16 @@ def export_auditoria_excel():
 
     query += ' ORDER BY fecha_subida DESC'
 
+    # Debugging: Print the final query and params
+    print(f"Query: {query}")
+    print(f"Params: {params}")
+
     registros = conn.execute(query, params).fetchall()
     conn.close()
+
+    if not registros:
+        flash('No se encontraron registros para exportar.')
+        return redirect(url_for('audit.auditoria'))
 
     df = pd.DataFrame(registros, columns=['fecha_subida', 'accion', 'documento', 'autor', 'version'])
     output = os.path.join(current_app.config['TEMP_FOLDER'], filename_excel)
