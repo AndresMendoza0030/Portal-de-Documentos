@@ -220,6 +220,9 @@ def view_file(filename):
     # Obtener la URL del archivo
     file_url = url_for('document.uploaded_file', filename=filename, _external=True)
 
+    # Impresión a consola para depuración
+    print(f"File URL: {file_url}")
+
     # Registrar el acceso al documento en la base de datos
     try:
          conn = get_usersdb_connection()
@@ -241,6 +244,7 @@ def view_file(filename):
         print(f"Error inserting document access record: {e}")
 
     return render_template('view_file.html', filename=filename, file_url=file_url)
+
 
 @bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
