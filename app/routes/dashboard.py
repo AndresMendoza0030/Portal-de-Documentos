@@ -1,10 +1,24 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash, current_app
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, current_app, jsonify
 from ..models import get_recent_documents, get_notifications, get_user_tasks, get_favorite_documents, get_shared_documents, add_user_task, get_user_events, submit_feedback
 from datetime import datetime
+
 import os
 from config import Config
 bp = Blueprint('dashboard', __name__)
 from werkzeug.utils import secure_filename
+@bp.route('/mark_notification_as_read', methods=['POST'])
+def mark_notification_as_read():
+    data = request.json
+    notification_id = data.get('notification_id')
+    if notification_id:
+        conn = get_usersdb_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE notifications SET is_read = 1 WHERE id = ?', (notification_id,))
+        conn.commit()
+        conn.close()
+        return jsonify(success=True)
+    return jsonify(success=False), 400
+
 @bp.route('/dashboard')
 def dashboard():
     if not session.get('logged_in'):
@@ -14,8 +28,8 @@ def dashboard():
     notifications = get_notifications(session['username'])
     user_tasks = get_user_tasks(session['username'])
     favorite_documents = get_favorite_documents(session['username'])
-    shared_documents = get_shared_documents(session['username'])
     user_events = get_user_events(session['username'])
+    shared_documents = get_shared_documents(session['username'])
 
     return render_template('dashboard.html', 
                            recent_documents=recent_documents, 

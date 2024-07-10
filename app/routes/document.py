@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session, send_from_directory, flash, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, session, send_from_directory, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
@@ -7,12 +7,55 @@ from ..models import get_db_connection, get_backup_db_connection, get_user_role,
 import tarfile
 import zipfile
 import shutil
-from config import Config
 import sqlite3
+
+from config import Config
 
 bp = Blueprint('document', __name__)
 ALLOWED_EXTENSIONS = {'pptx', 'docx', 'pdf', 'xlsx'}
 
+# Funciones de actualización de datos
+def update_shared_files_on_rename(old_filename, new_filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE shared_files SET filename = ? WHERE filename = ?', (new_filename, old_filename))
+    conn.commit()
+    conn.close()
+
+def update_notifications_on_rename(old_filename, new_filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE notifications SET filename = ? WHERE filename = ?', (new_filename, old_filename))
+    conn.commit()
+    conn.close()
+
+def delete_shared_files_on_delete(filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM shared_files WHERE filename = ?', (filename,))
+    conn.commit()
+    conn.close()
+
+def delete_notifications_on_delete(filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM notifications WHERE filename = ?', (filename,))
+    conn.commit()
+    conn.close()
+
+def update_shared_files_on_move(old_filename, new_filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE shared_files SET filename = ? WHERE filename = ?', (new_filename, old_filename))
+    conn.commit()
+    conn.close()
+
+def update_notifications_on_move(old_filename, new_filename):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE notifications SET filename = ? WHERE filename = ?', (new_filename, old_filename))
+    conn.commit()
+    conn.close()
 
 def create_backup(is_individual=False, file_path=None):
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -44,7 +87,7 @@ def create_backup(is_individual=False, file_path=None):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def get_file_tree(folder, allowed_folders):
+def get_file_tree(folder, allowed_folders, username, role):
     def recursive_scan(directory):
         tree = []
         for item in os.listdir(directory):
@@ -71,12 +114,13 @@ def get_file_tree(folder, allowed_folders):
                     icon = iconsPath + 'pptx.png'
                 elif ext == 'xlsx':
                     icon = iconsPath + 'xlsx.png'
-                tree.append({
-                    "text": item,
-                    "a_attr": {"href": url_for('document.view_file', filename=os.path.relpath(item_path, folder).replace('\\', '/'))},
-                    "type": "file",
-                    "icon": icon
-                })
+                if any(allowed in item_path for allowed in allowed_folders):
+                    tree.append({
+                        "text": item,
+                        "a_attr": {"href": url_for('document.view_file', filename=os.path.relpath(item_path, folder).replace('\\', '/'))},
+                        "type": "file",
+                        "icon": icon
+                    })
         return tree
 
     return recursive_scan(folder)
@@ -86,10 +130,11 @@ def documents():
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
     
+    username = session['username']
     role = session.get('role')
-    allowed_folders = get_user_folders(role)
+    allowed_folders = get_user_folders(role, username)
     
-    file_tree = get_file_tree(current_app.config['UPLOAD_FOLDER'], allowed_folders)
+    file_tree = get_file_tree(current_app.config['UPLOAD_FOLDER'], allowed_folders, username, role)
     return render_template('documents.html', files=file_tree)
 
 @bp.route('/upload', methods=['GET', 'POST'])
@@ -97,12 +142,18 @@ def upload_file():
     if not session.get('logged_in'):
         return redirect(url_for('auth.login'))
 
+    username = session.get('username')
+    role = session.get('role')
+
     if request.method == 'POST':
         if 'files' not in request.files or 'selected-folder' not in request.form:
             flash('Archivos o carpeta no seleccionados.')
             return redirect(request.url)
         files = request.files.getlist('files')
         selected_folder = request.form['selected-folder']
+        shared_type = request.form.get('shared_type')
+        shared_with = request.form.get('shared_with', '').split(',')
+
         if not files or all(file.filename == '' for file in files):
             flash('No se seleccionaron archivos.')
             return redirect(request.url)
@@ -126,15 +177,87 @@ def upload_file():
                     handle_new_file_upload(file, filename, upload_path)
                     flash(f'Archivo {filename} subido con éxito.')
 
+                # Compartir archivo
+                share_file2(filename, shared_type, shared_with, username)
+
         return redirect(url_for('document.documents'))
 
-    folder_tree_data = build_folder_tree(current_app.config['UPLOAD_FOLDER'], session.get('role'))
-    return render_template('upload.html', folder_tree_data=folder_tree_data)
+    folder_tree_data = build_folder_tree(current_app.config['UPLOAD_FOLDER'], role, username)
+    return render_template('upload.html', folder_tree_data=folder_tree_data, role=role, username=username)
 
+def add_notification(user, filename, shared_by):
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    
+    date_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    message = f"El usuario {shared_by} ha compartido un archivo contigo el {date_now}."
+    
+    cursor.execute('INSERT INTO notifications (user, message, filename, date) VALUES (?, ?, ?, ?)', 
+                   (user, message, filename, date_now))
+    
+    print(f"Notification added for user {user}: {message} - Filename: {filename}")
+    
+    conn.commit()
+    conn.close()
+def share_file2(filename, shared_type, shared_with, shared_by):
+    print(f"Sharing file '{filename}' with shared_type '{shared_type}' and shared_by '{shared_by}'")
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
 
+    if shared_type == 'all':
+        users = cursor.execute('SELECT username FROM users').fetchall()
+        shared_with = [user[0] for user in users]
+    elif shared_type == 'role':
+        role = session.get('role')
+        users = cursor.execute('SELECT username FROM users WHERE role = ?', (role,)).fetchall()
+        shared_with = [user[0] for user in users]
 
-def build_folder_tree(root_folder, role):
-    allowed_folders = get_user_folders(role)
+    for user in shared_with:
+        print(f"Adding notification for user {user}")
+        add_notification(user, filename, shared_by)
+        cursor.execute('INSERT INTO shared_files (filename, owner, shared_with, shared_type) VALUES (?, ?, ?, ?)',
+                       (filename, shared_by, user, shared_type))
+
+    conn.commit()
+    conn.close()
+
+@bp.route('/share_file', methods=['POST'])
+def share_file():
+    if not session.get('logged_in'):
+        return redirect(url_for('auth.login'))
+
+    data = request.form
+    filename = data.get('filename')
+    shared_with = data.get('shared_with')  # Lista de usuarios separados por comas
+    shared_type = data.get('shared_type')
+
+    if not filename or not shared_with or not shared_type:
+        flash('Faltan datos para compartir el archivo.')
+        return redirect(url_for('document.documents'))
+
+    owner = session['username']
+    
+    users = [user.strip() for user in shared_with.split(',')]
+    
+    print(f"Sharing file '{filename}' with users: {users} - Shared type: {shared_type}")
+
+    conn = sqlite3.connect('users.db')
+    for user in users:
+        conn.execute('INSERT INTO shared_files (filename, owner, shared_with, shared_type) VALUES (?, ?, ?, ?)',
+                     (filename, owner, user, 'user'))  # Siempre será 'user' cuando se comparta con usuarios específicos
+    conn.commit()
+    conn.close()
+    
+    flash('Archivo compartido con éxito.')
+    
+    # Añadir notificación para cada usuario con quien se compartió el archivo
+    for user in users:
+        add_notification(user, filename, owner)
+    
+    return redirect(url_for('document.documents'))
+
+def build_folder_tree(root_folder, role, username):
+    allowed_folders = get_user_folders(role, username)
     tree = []
     for item in os.listdir(root_folder):
         item_path = os.path.join(root_folder, item)
@@ -143,10 +266,25 @@ def build_folder_tree(root_folder, role):
                 node = {
                     "text": item,
                     "path": item.replace('\\', '/'),
-                    "children": build_folder_tree(item_path, role)
+                    "children": build_folder_tree(item_path, role, username)
                 }
                 tree.append(node)
     return tree
+
+# Endpoint para la búsqueda de usuarios
+@bp.route('/search_users', methods=['GET'])
+def search_users():
+    query = request.args.get('query', '').strip().lower()
+    if not query:
+        return jsonify([])
+
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT username FROM users WHERE LOWER(username) LIKE ?', (f'%{query}%',))
+    users = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    return jsonify(users)
 
 def handle_file_replacement(file, filename, upload_path):
     file.save(upload_path)
@@ -161,7 +299,6 @@ def handle_file_replacement(file, filename, upload_path):
                 new_version = previous_version + 0.1
                 conn.execute('INSERT INTO auditoria (fecha_subida, accion, documento, autor, version) VALUES (?,?, ?, ?, ?)',
                              (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Reemplazó', filename, session['username'], f'{new_version:.1f}'))
-                
             else:
                 conn.execute('INSERT INTO auditoria (fecha_subida,accion, documento, autor, version) VALUES (?,?, ?, ?, ?)',
                              (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),'Subió', filename, session['username'], '1.0'))
@@ -375,6 +512,11 @@ def delete_file():
             conn.commit()
             conn.close()
             print("Audit record inserted")
+
+            # Actualizar registros de archivos compartidos y notificaciones
+            delete_shared_files_on_delete(filename)
+            delete_notifications_on_delete(filename)
+
             return 'success', 200
         else:
             print(f'File does not exist: {full_path}')
@@ -426,6 +568,11 @@ def rename():
             conn.commit()
             conn.close()
             print("Audit record inserted")
+
+            # Actualizar registros de archivos compartidos y notificaciones
+            update_shared_files_on_rename(old_path, new_path)
+            update_notifications_on_rename(old_path, new_path)
+
             return 'success', 200
         else:
             print(f"File/folder does not exist: {full_old_path}")
@@ -494,7 +641,34 @@ def move():
         conn.close()
         print("Audit record inserted")
 
+        # Actualizar registros de archivos compartidos y notificaciones
+        update_shared_files_on_move(src, dst)
+        update_notifications_on_move(src, dst)
+
         return 'success', 200
     except Exception as e:
         print(f"Error during move: {str(e)}")
         return f'error: {str(e)}', 500
+
+@bp.route('/toggle_favorite/<path:filename>', methods=['POST'])
+def toggle_favorite(filename):
+    # Asegúrate de que el usuario esté autenticado y el username esté en la sesión
+    if 'username' not in session:
+        return jsonify({'error': 'User not logged in'}), 401
+
+    username = session['username']
+    is_favorite = toggle_favorite_in_db(filename, username)
+    return jsonify({'is_favorite': is_favorite})
+
+def toggle_favorite_in_db(filename, username):
+    conn = get_usersdb_connection()
+    existing_entry = conn.execute('SELECT * FROM favorite_documents WHERE user = ? AND filename = ?', (username, filename)).fetchone()
+    if existing_entry:
+        conn.execute('DELETE FROM favorite_documents WHERE user = ? AND filename = ?', (username, filename))
+        is_favorite = False
+    else:
+        conn.execute('INSERT INTO favorite_documents (user, filename) VALUES (?, ?)', (username, filename))
+        is_favorite = True
+    conn.commit()
+    conn.close()
+    return is_favorite

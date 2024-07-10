@@ -12,6 +12,7 @@
         flex-direction: column;
         align-items: center;
         padding: 20px;
+        background-color: #f4f4f4;
     }
 
     .view-header {
@@ -89,7 +90,89 @@
         font-weight: bold;
         color: #333;
     }
-    
+
+    .favorite-container {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+    }
+
+    .favorite-icon {
+        font-size: 36px;
+        cursor: pointer;
+        color: #ccc;
+    }
+
+    .favorite-icon.favorite {
+        color: gold;
+    }
+
+    .favorite-icon:hover {
+        color: darkgrey;
+    }
+
+    .shared-users-container {
+        display: none;
+        flex-direction: column;
+        margin-top: 20px;
+        width: 100%;
+        max-width: 1000px;
+    }
+
+    .shared-users-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .shared-user-item {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        background-color: #e0e0e0;
+        border-radius: 20px;
+    }
+
+    .shared-user-item span {
+        margin-left: 5px;
+        cursor: pointer;
+    }
+
+    .search-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .search-result-item {
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .search-result-item:hover {
+        background-color: #f4f4f4;
+    }
+
 </style>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <div class="view-container">
@@ -103,10 +186,15 @@
         <p><strong>Archivo:</strong> {{ filename }}</p>
         {% if filename.endswith('.pdf') %}
             <embed src="{{ file_url }}" type="application/pdf" width="100%" height="600px" />
-           
         {% else %}
             <p><a href="{{ url_for('document.download_document', filename=filename) }}">Descargar Documento</a></p>
         {% endif %}
+    </div>
+    <div class="favorite-container">
+        <span class="material-icons favorite-icon {% if is_favorite %}favorite{% endif %}" onclick="toggleFavorite()">
+            star
+        </span>
+        <p style="margin-left: 10px;">Añadir a favoritos</p>
     </div>
     <div class="form-group">
         <form method="POST" enctype="multipart/form-data" action="{{ url_for('document.view_file', filename=filename) }}">
@@ -116,5 +204,127 @@
             <div style="text-align: center;"><button type="submit" class="submit-button">Reemplazar Archivo</button></div>
         </form>
     </div>
+    <form method="POST" action="{{ url_for('document.share_file') }}">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <div class="form-group">
+            <label for="shared_type">Compartir con:</label>
+            <select name="shared_type" id="shared_type" class="form-control" onchange="handleShareTypeChange()">
+                <option value="all">Todos</option>
+                <option value="role">{{ session['role'] }}</option>
+                <option value="user">Usuarios específicos</option>
+            </select>
+        </div>
+        <div class="shared-users-container" id="shared-users-container">
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar usuarios..." oninput="searchUsers()">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            <div class="shared-users-list" id="shared-users-list"></div>
+        </div>
+        <div style="text-align: center;">
+        <button type="submit" class="submit-button">Compartir</button></div>
+    </form>
 </div>
+<script>
+    let users = [];  // Array para almacenar los usuarios seleccionados
+
+    function handleShareTypeChange() {
+        const sharedType = document.getElementById('shared_type').value;
+        const sharedUsersContainer = document.getElementById('shared-users-container');
+        if (sharedType === 'user') {
+            sharedUsersContainer.style.display = 'flex';
+        } else {
+            sharedUsersContainer.style.display = 'none';
+        }
+    }
+
+    function searchUsers() {
+        const query = document.getElementById('search-input').value;
+        if (query.length < 2) {
+            document.getElementById('search-results').innerHTML = '';
+            return;
+        }
+
+        fetch(`{{ url_for('document.search_users') }}?query=${query}`)
+            .then(response => response.json())
+            .then(results => {
+                const searchResults = document.getElementById('search-results');
+                searchResults.innerHTML = '';
+                results.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.textContent = result;
+                    div.onclick = () => addUser(result);
+                    searchResults.appendChild(div);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function addUser(user) {
+        if (!users.includes(user)) {
+            users.push(user);
+            updateUserList();
+            document.getElementById('search-results').innerHTML = '';  // Limpiar resultados de búsqueda
+        }
+    }
+
+    function removeUser(user) {
+        users = users.filter(u => u !== user);
+        updateUserList();
+    }
+
+    function updateUserList() {
+        const sharedUsersList = document.getElementById('shared-users-list');
+        sharedUsersList.innerHTML = '';
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'shared-user-item';
+            div.textContent = user;
+            const span = document.createElement('span');
+            span.textContent = 'x';
+            span.onclick = () => removeUser(user);
+            div.appendChild(span);
+            sharedUsersList.appendChild(div);
+        });
+    }
+
+    document.querySelector('form').onsubmit = function() {
+        if (document.getElementById('shared_type').value === 'user') {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'shared_with';
+            input.value = users.join(',');
+            this.appendChild(input);
+        }
+    };
+
+    function toggleFavorite() {
+        fetch('{{ url_for("document.toggle_favorite", filename=filename) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: "{{ session['username'] }}"
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const icon = document.querySelector('.favorite-icon');
+            if (data.is_favorite) {
+                icon.classList.add('favorite');
+            } else {
+                icon.classList.remove('favorite');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
+
 {% endblock %}

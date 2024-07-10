@@ -12,6 +12,8 @@
         flex-direction: column;
         align-items: center;
         padding: 20px;
+      
+        background-color: #f4f4f4;
     }
 
     .file-upload-header {
@@ -19,7 +21,7 @@
         max-width: 600px;
         padding: 20px 10px;
         background-color: #1B878F;
-        color: #FFFFFF;
+        color: #f4f4f4;
         border-radius: 10px;
         text-align: center;
         font-family: 'Raleway', sans-serif;
@@ -29,7 +31,7 @@
         width: 100%;
         max-width: 600px;
         margin-top: 20px;
-        background-color: #fff;
+        background-color: #f4f4f4;
         border: 1px solid #ddd;
         border-radius: 10px;
         padding: 20px;
@@ -37,6 +39,7 @@
 
     .form-group {
         margin-bottom: 15px;
+            
     }
 
     .form-label {
@@ -50,6 +53,67 @@
         padding: 10px;
         margin-top: 5px;
         font-family: 'Raleway', sans-serif;
+    }
+    .shared-users-container {
+        display: none;
+        flex-direction: column;
+        margin-top: 20px;
+        width: 100%;
+        max-width: 1000px;
+    }
+
+    .shared-users-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .shared-user-item {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        background-color: #e0e0e0;
+        border-radius: 20px;
+    }
+
+    .shared-user-item span {
+        margin-left: 5px;
+        cursor: pointer;
+    }
+
+    .search-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .search-result-item {
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .search-result-item:hover {
+        background-color: #f4f4f4;
     }
 
     .submit-button {
@@ -86,6 +150,21 @@
         <div class="form-group">
             <label for="files" class="form-label">Selecciona archivos:</label>
             <input type="file" name="files" id="files" class="form-control" multiple>
+        </div>
+        <div class="form-group">
+            <label for="shared_type" class="form-label">Compartir con:</label>
+            <select name="shared_type" id="shared_type" class="form-control" onchange="handleShareTypeChange()">
+                <option value="all">Todos</option>
+                <option value="role">{{ role }}</option>
+                <option value="user">Usuarios específicos</option>
+            </select>
+        </div>
+        <div class="shared-users-container" id="shared-users-container" style="display:none;">
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar usuarios..." oninput="searchUsers()">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            <div class="shared-users-list" id="shared-users-list"></div>
         </div>
         <button type="submit" class="submit-button">Subir Archivos</button>
     </form>
@@ -127,5 +206,79 @@
             $('#selected-folder').val(selectedPath);
         });
     });
+
+    function handleShareTypeChange() {
+        const sharedType = document.getElementById('shared_type').value;
+        const sharedUsersContainer = document.getElementById('shared-users-container');
+        if (sharedType === 'user') {
+            sharedUsersContainer.style.display = 'flex';
+        } else {
+            sharedUsersContainer.style.display = 'none';
+        }
+    }
+
+    let users = [];  // Array para almacenar los usuarios seleccionados
+
+    function searchUsers() {
+        const query = document.getElementById('search-input').value;
+        if (query.length < 2) {
+            document.getElementById('search-results').innerHTML = '';
+            return;
+        }
+
+        fetch(`{{ url_for('document.search_users') }}?query=${query}`)
+            .then(response => response.json())
+            .then(results => {
+                const searchResults = document.getElementById('search-results');
+                searchResults.innerHTML = '';
+                results.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.textContent = result;
+                    div.onclick = () => addUser(result);
+                    searchResults.appendChild(div);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function addUser(user) {
+        if (!users.includes(user)) {
+            users.push(user);
+            updateUserList();
+            document.getElementById('search-results').innerHTML = '';  // Limpiar resultados de búsqueda
+        }
+    }
+
+    function removeUser(user) {
+        users = users.filter(u => u !== user);
+        updateUserList();
+    }
+
+    function updateUserList() {
+        const sharedUsersList = document.getElementById('shared-users-list');
+        sharedUsersList.innerHTML = '';
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'shared-user-item';
+            div.textContent = user;
+            const span = document.createElement('span');
+            span.textContent = 'x';
+            span.onclick = () => removeUser(user);
+            div.appendChild(span);
+            sharedUsersList.appendChild(div);
+        });
+    }
+
+    document.querySelector('form').onsubmit = function() {
+        if (document.getElementById('shared_type').value === 'user') {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'shared_with';
+            input.value = users.join(',');
+            this.appendChild(input);
+        }
+    };
 </script>
+
 {% endblock %}

@@ -45,7 +45,7 @@
     .card a:hover {
         text-decoration: underline;
     }
-    
+
     .submit-button {
         margin-top: 20px;
         padding: 10px 20px;
@@ -60,12 +60,67 @@
     .submit-button:hover {
         background-color: #a00;
     }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        min-height: 150px;
+        border-radius: 10px;
+    }
+
+    .close {
+        color: #aaa;
+        align-self: flex-end;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .modal-button {
+        padding: 10px 20px;
+        background-color: #D10A11;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        margin-top: 10px;
+    }
+
+    .modal-button:hover {
+        background-color: #a00;
+    }
 </style>
 
 <div class="dashboard-container">
     <div class="welcome-message">
-        <h1>Bienvenido al Centro Virtual de Documentación</h1>
-        <p>Hola, {{ session['username'] }}. Aquí tienes accesos rápidos a las funcionalidades principales.</p>
+        <h1>Bienvenid@ al Centro Virtual de Documentación</h1>
+        <p>Hola, {{ session['username'] }}. Aquí tiene accesos rápidos a las funcionalidades principales.</p>
     </div>
     <div class="card">
         <h2>Documentos Recientes</h2>
@@ -75,8 +130,7 @@
             {% endfor %}
         </ul>
     </div>
-    
-    
+
     <div class="card">
         <h2>Documentos Favoritos</h2>
         <ul>
@@ -94,12 +148,16 @@
             {% endfor %}
         </ul>
     </div>
-    
+
     <div class="card">
         <h2>Notificaciones</h2>
         <ul>
             {% for notification in notifications %}
-            <li>{{ notification.message }} - {{ notification.date.strftime('%Y-%m-%d %H:%M:%S') }}</li>
+            <li>
+                {{ notification.message }} - 
+                <a href="{{ url_for('document.view_file', filename=notification.filename) }}" class="notification-link" data-id="{{ notification.id }}" data-filename="{{ notification.filename }}" data-is-read="{{ notification.is_read }}">Ver archivo</a> - 
+                {{ notification.date }}
+            </li>
             {% endfor %}
         </ul>
     </div>
@@ -108,7 +166,7 @@
         <h2>Tareas Pendientes</h2>
         <ul>
             {% for task in user_tasks %}
-            <li>{{ task.description }} - Fecha límite: {{ task.due_date.strftime('%Y-%m-%d') }}</li>
+            <li>{{ task.description }} - Fecha límite: {{ task.due_date }}</li>
             {% endfor %}
         </ul>
         <form method="post" action="{{ url_for('dashboard.add_task') }}" style=" font-family: 'Raleway', sans-serif;">
@@ -124,15 +182,24 @@
     </div>
 
     <div class="card">
-       
-            <h2>Comentarios y Retroalimentación</h2>
-            <form method="post" enctype="multipart/form-data" action="{{ url_for('ayuda.submits_feedback') }}">
-                <textarea name="feedback" placeholder="Escribe tus comentarios aquí..." style="font-family: 'Raleway', sans-serif; width: 100%; height: 100px;" required></textarea>
-                <label for="capture" class="form-label">Subir una captura (opcional):</label>
-                <input type="file" name="capture" id="capture" class="form-control" accept="image/*">
-                <button type="submit" class="submit-button">Enviar</button>
-            </form>
-       
+        <h2>Comentarios y Retroalimentación</h2>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('ayuda.submits_feedback') }}">
+            <textarea name="feedback" placeholder="Escribe tus comentarios aquí..." style="font-family: 'Raleway', sans-serif; width: 100%; height: 100px;" required></textarea>
+            <label for="capture" class="form-label">Subir una captura (opcional):</label>
+            <input type="file" name="capture" id="capture" class="form-control" accept="image/*">
+            <button type="submit" class="submit-button">Enviar</button>
+        </form>
+    </div>
+</div>
+
+<div id="notificationModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <p id="modalMessage"></p>
+        
+        <div style="text-align: center;"><a href="#" id="viewFileButton" class="modal-button">Ver Archivo</a></div>
+        
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
@@ -152,6 +219,64 @@
             ]
         });
         calendar.render();
+
+        var unreadNotifications = [];
+        document.querySelectorAll('.notification-link').forEach(function(link) {
+            var isRead = link.getAttribute('data-is-read');
+            if (isRead == '0') {
+                unreadNotifications.push(link);
+            }
+        });
+
+        if (unreadNotifications.length > 0) {
+            showNotificationPopup(unreadNotifications);
+        }
+
+        function showNotificationPopup(notifications) {
+            if (notifications.length == 0) return;
+
+            var link = notifications.shift();
+            var notificationId = link.getAttribute('data-id');
+            var filename = link.getAttribute('data-filename');
+            var message = link.parentElement.textContent.split(" - ")[0];
+
+            var modal = document.getElementById("notificationModal");
+            var span = document.getElementsByClassName("close")[0];
+            var viewFileButton = document.getElementById("viewFileButton");
+            var modalMessage = document.getElementById("modalMessage");
+
+            modalMessage.textContent = message;
+            viewFileButton.href = link.href;
+
+            modal.style.display = "flex";
+
+            span.onclick = function() {
+                modal.style.display = "none";
+                showNotificationPopup(notifications);
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                    showNotificationPopup(notifications);
+                }
+            }
+
+            fetch('{{ url_for("dashboard.mark_notification_as_read") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notificationId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    link.setAttribute('data-is-read', '1');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
     });
 </script>
 {% endblock %}
