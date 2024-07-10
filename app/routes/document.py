@@ -688,7 +688,7 @@ def drive(folder_path=''):
         return redirect(url_for('document.drive'))
 
     if not os.path.exists(full_path):
-        flash('La carpeta no existe.')
+        flash('La carpeta no existe')
         return redirect(url_for('document.drive'))
     
     items = os.listdir(full_path)
