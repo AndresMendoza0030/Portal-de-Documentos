@@ -685,11 +685,11 @@ def drive(folder_path=''):
     
     if not any(full_path.startswith(os.path.join(current_app.config['UPLOAD_FOLDER'], folder)) for folder in allowed_folders):
         flash('Acceso denegado a esta carpeta.')
-        return redirect(url_for('drive'))
+        return redirect(url_for('document.drive'))
 
     if not os.path.exists(full_path):
         flash('La carpeta no existe.')
-        return redirect(url_for('drive'))
+        return redirect(url_for('document.drive'))
     
     items = os.listdir(full_path)
     folders = [item for item in items if os.path.isdir(os.path.join(full_path, item))]
