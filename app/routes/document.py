@@ -654,7 +654,7 @@ def move():
 def toggle_favorite(filename):
     # Asegúrate de que el usuario esté autenticado y el username esté en la sesión
     if 'username' not in session:
-        return jsonify({'error': 'User not logged in'}), 401
+        return jsonify({'error': 'User not logged'}), 401
 
     username = session['username']
     is_favorite = toggle_favorite_in_db(filename, username)
