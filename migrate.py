@@ -1,22 +1,14 @@
 import sqlite3
 
-def print_shared_files(username):
+def clear_table(table_name):
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT filename, owner, shared_with, shared_type 
-        FROM shared_files 
-        WHERE shared_with = ?
-    ''', (username,))
-    
-    shared_files = cursor.fetchall()
-    
-    print(f"Archivos compartidos con {username}:")
-    for file in shared_files:
-        print(f"Filename: {file[0]}, Owner: {file[1]}, Shared With: {file[2]}, Shared Type: {file[3]}")
-    
+    cursor.execute(f'DELETE FROM {table_name}')
+    conn.commit()
     conn.close()
+    print(f'Table {table_name} has been cleared.')
 
-# Llamar a la función para el usuario "oim"
-print_shared_files('oim')
+if __name__ == '__main__':
+    tables_to_clear = ['notifications', 'documents', 'shared_files']
+    for table in tables_to_clear:
+        clear_table(table)

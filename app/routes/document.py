@@ -672,3 +672,33 @@ def toggle_favorite_in_db(filename, username):
     conn.commit()
     conn.close()
     return is_favorite
+@bp.route('/drive/<path:folder_path>', methods=['GET'])
+@bp.route('/drive', methods=['GET'])
+def drive(folder_path=''):
+    if not session.get('logged_in'):
+        return redirect(url_for('auth.login'))
+
+    username = session['username']
+    role = session.get('role')
+    allowed_folders = get_user_folders(role, username)
+    full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], folder_path)
+    
+    if not any(full_path.startswith(os.path.join(current_app.config['UPLOAD_FOLDER'], folder)) for folder in allowed_folders):
+        flash('Acceso denegado a esta carpeta.')
+        return redirect(url_for('drive'))
+
+    if not os.path.exists(full_path):
+        flash('La carpeta no existe.')
+        return redirect(url_for('drive'))
+    
+    items = os.listdir(full_path)
+    folders = [item for item in items if os.path.isdir(os.path.join(full_path, item))]
+    files = [item for item in items if os.path.isfile(os.path.join(full_path, item))]
+
+    parent_folder = os.path.dirname(folder_path) if folder_path else None
+
+    return render_template('drive.html', 
+                           current_folder=folder_path, 
+                           folders=folders, 
+                           files=files, 
+                           parent_folder=parent_folder)

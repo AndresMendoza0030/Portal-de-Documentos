@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .drive-container {
+        padding: 20px;
+        max-width: 100%;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .breadcrumbs {
+        margin-bottom: 20px;
+        font-size: 16px;
+    }
+
+    .breadcrumbs a {
+        color: #D10A11;
+        text-decoration: none;
+    }
+
+    .breadcrumbs a:hover {
+        text-decoration: underline;
+    }
+
+    .folders, .files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        justify-content: flex-start;
+    }
+
+    .folder, .file {
+        text-align: center;
+        flex: 0 1 auto;
+    }
+
+    .folder a, .file a {
+        text-decoration: none;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .folder a:hover, .file a:hover {
+        text-decoration: underline;
+    }
+
+    .icon {
+        width: var(--icon-size, 80px);
+        height: var(--icon-size, 80px);
+        margin-bottom: 10px;
+    }
+
+    .text {
+        font-size: var(--text-size, 1.2em);
+    }
+
+    .size-options {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+
+    .size-options button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        margin: 0 5px;
+    }
+
+    .size-options button img {
+        width: 30px;
+        height: 30px;
+    }
+</style>
+
+<div class="drive-container">
+    <div class="size-options">
+        <button onclick="setIconSize('small')"><img src="{{ url_for('static', filename='images/icons/small.png') }}" alt="Pequeño"></button>
+        <button onclick="setIconSize('medium')"><img src="{{ url_for('static', filename='images/icons/medium.png') }}" alt="Mediano"></button>
+        <button onclick="setIconSize('large')"><img src="{{ url_for('static', filename='images/icons/large.png') }}" alt="Grande"></button>
+    </div>
+
+    <div class="breadcrumbs">
+        <a href="{{ url_for('document.drive') }}">Raíz</a>
+        {% if current_folder %}
+            {% for part in current_folder.split('/') %}
+                / <a href="{{ url_for('document.drive', folder_path=current_folder.split(part)[0] + part) }}">{{ part }}</a>
+                {% endfor %}
+            {% endif %}
+        </div>
+    
+        {% if parent_folder %}
+            <div class="folder">
+                <a href="{{ url_for('document.drive', folder_path=parent_folder) }}">
+                    <img src="{{ url_for('static', filename='images/icons/folder.png') }}" class="icon">
+                    <div class="text">../</div>
+                </a>
+            </div>
+        {% endif %}
+    
+        <div class="folders">
+            {% for folder in folders %}
+                <div class="folder">
+                    <a href="{{ url_for('document.drive', folder_path=current_folder + '/' + folder) }}">
+                        <img src="{{ url_for('static', filename='images/icons/folder.png') }}" class="icon">
+                        <div class="text">{{ folder }}</div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    
+        <div class="files">
+            {% for file in files %}
+                <div class="file">
+                    <a href="{{ url_for('document.view_file', filename=current_folder + '/' + file) }}">
+                        {% set ext = file.split('.').pop().lower() %}
+                        {% if ext == 'pdf' %}
+                            <img src="{{ url_for('static', filename='images/icons/pdf.png') }}" class="icon">
+                        {% elif ext == 'docx' %}
+                            <img src="{{ url_for('static', filename='images/icons/docx.png') }}" class="icon">
+                        {% elif ext == 'pptx' %}
+                            <img src="{{ url_for('static', filename='images/icons/pptx.png') }}" class="icon">
+                        {% elif ext == 'xlsx' %}
+                            <img src="{{ url_for('static', filename='images/icons/xlsx.png') }}" class="icon">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/icons/file.png') }}" class="icon">
+                        {% endif %}
+                        <div class="text">{{ file }}</div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <script>
+        function setIconSize(size) {
+            let root = document.documentElement;
+            switch (size) {
+                case 'small':
+                    root.style.setProperty('--icon-size', '50px');
+                    root.style.setProperty('--text-size', '0.8em');
+                    break;
+                case 'medium':
+                    root.style.setProperty('--icon-size', '80px');
+                    root.style.setProperty('--text-size', '1.2em');
+                    break;
+                case 'large':
+                    root.style.setProperty('--icon-size', '120px');
+                    root.style.setProperty('--text-size', '1.5em');
+                    break;
+                default:
+                    root.style.setProperty('--icon-size', '80px');
+                    root.style.setProperty('--text-size', '1.2em');
+            }
+        }
+    </script>
+    {% endblock %}
+    
+
